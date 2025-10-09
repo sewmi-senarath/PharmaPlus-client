@@ -1,24 +1,61 @@
 import { View, Text, TouchableOpacity, TextInput, ScrollView, Image, Alert } from 'react-native';
-import { useRouter, Stack } from 'expo-router';
+import { useRouter, Stack, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const { userRole } = useLocalSearchParams();
   const [isEditing, setIsEditing] = useState(false);
   
-  const [profile, setProfile] = useState({
-    name: 'Kasun Perera',
-    email: 'kasun.perera@example.com',
-    phone: '+94 77 123 4567',
-    vehicleNumber: 'CAB-1234',
-    vehicleType: 'Motorcycle',
-    licenseNumber: 'B1234567',
-    rating: 4.8,
-    totalDeliveries: 1247,
-    joinDate: 'Jan 2023',
-  });
+  // Different profile data based on role
+  const getProfileData = () => {
+    if (userRole === 'Customer') {
+      return {
+        name: 'John Doe',
+        email: 'john.doe@example.com',
+        phone: '+94 71 234 5678',
+        address: '123 Main St, Colombo',
+        allergies: 'Penicillin, Shellfish',
+        bloodType: 'O+',
+        joinDate: 'Jan 2024', // Add this
+      };
+    } else if (userRole === 'Pharmacist') {
+      return {
+        name: 'Dr. Silva',
+        email: 'silva@pharmacy.com',
+        phone: '+94 77 888 9999',
+        pharmacyLicense: 'PL-123456',
+        pharmacyName: 'City Pharmacy',
+        yearsExperience: 10,
+        joinDate: 'Mar 2020', // Add this
+      };
+    } else if (userRole === 'Rider') {
+      return {
+        name: 'Kasun Perera',
+        email: 'kasun.perera@example.com',
+        phone: '+94 77 123 4567',
+        vehicleNumber: 'CAB-1234',
+        vehicleType: 'Motorcycle',
+        licenseNumber: 'B1234567',
+        rating: 4.8,
+        totalDeliveries: 1247,
+        joinDate: 'Jan 2023', // Already exists, keep it
+      };
+    } else { // Admin
+      return {
+        name: 'Admin User',
+        email: 'admin@pharmaplus.com',
+        phone: '+94 11 234 5678',
+        role: 'System Administrator',
+        department: 'IT Management',
+        joinDate: 'Dec 2019', // Add this
+      };
+    }
+  };
+
+  const [profile, setProfile] = useState(getProfileData());
 
   const handleSave = () => {
     setIsEditing(false);
@@ -48,13 +85,11 @@ export default function ProfileScreen() {
               </TouchableOpacity>
             </View>
             <Text className="text-white text-2xl font-bold mt-4">{profile.name}</Text>
-            <View className="flex-row items-center mt-2">
-              <Ionicons name="star" size={16} color="#FCD34D" />
-              <Text className="text-white ml-1 font-semibold">{profile.rating}</Text>
-              <Text className="text-teal-100 ml-2">
-                {profile.totalDeliveries} deliveries
-              </Text>
-            </View>
+            <Text className="text-teal-100 text-sm mt-1">
+              {userRole === 'Customer' ? 'Customer Account' :
+               userRole === 'Pharmacist' ? 'Pharmacist Account' :
+               userRole === 'Rider' ? 'Rider Account' : 'Admin Account'}
+            </Text>
           </View>
 
           {/* Stats Cards */}
@@ -138,35 +173,39 @@ export default function ProfileScreen() {
               )}
             </View>
 
-            {/* Vehicle Information */}
-            <Text className="text-lg font-bold text-gray-900 mt-6 mb-4">
-              Vehicle Information
-            </Text>
-
-            <View className="bg-white rounded-xl p-4 mb-3">
-              <Text className="text-xs text-gray-500 mb-2">Vehicle Number</Text>
-              {isEditing ? (
-                <TextInput
-                  value={profile.vehicleNumber}
-                  onChangeText={(text) => setProfile({...profile, vehicleNumber: text})}
-                  className="text-gray-900 text-base font-semibold"
-                />
-              ) : (
-                <Text className="text-gray-900 text-base font-semibold">
-                  {profile.vehicleNumber}
+            {/* Vehicle Information - Only show for Rider */}
+            {userRole === 'Rider' && profile.vehicleNumber && (
+              <>
+                <Text className="text-lg font-bold text-gray-900 mt-6 mb-4">
+                  Vehicle Information
                 </Text>
-              )}
-            </View>
 
-            <View className="bg-white rounded-xl p-4 mb-3">
-              <Text className="text-xs text-gray-500 mb-2">Vehicle Type</Text>
-              <Text className="text-gray-900 text-base">{profile.vehicleType}</Text>
-            </View>
+                <View className="bg-white rounded-xl p-4 mb-3">
+                  <Text className="text-xs text-gray-500 mb-2">Vehicle Number</Text>
+                  {isEditing ? (
+                    <TextInput
+                      value={profile.vehicleNumber}
+                      onChangeText={(text) => setProfile({...profile, vehicleNumber: text})}
+                      className="text-gray-900 text-base font-semibold"
+                    />
+                  ) : (
+                    <Text className="text-gray-900 text-base font-semibold">
+                      {profile.vehicleNumber}
+                    </Text>
+                  )}
+                </View>
 
-            <View className="bg-white rounded-xl p-4 mb-3">
-              <Text className="text-xs text-gray-500 mb-2">License Number</Text>
-              <Text className="text-gray-900 text-base">{profile.licenseNumber}</Text>
-            </View>
+                <View className="bg-white rounded-xl p-4 mb-3">
+                  <Text className="text-xs text-gray-500 mb-2">Vehicle Type</Text>
+                  <Text className="text-gray-900 text-base">{profile.vehicleType}</Text>
+                </View>
+
+                <View className="bg-white rounded-xl p-4 mb-3">
+                  <Text className="text-xs text-gray-500 mb-2">License Number</Text>
+                  <Text className="text-gray-900 text-base">{profile.licenseNumber}</Text>
+                </View>
+              </>
+            )}
 
             {/* Action Buttons */}
             <View className="mt-6 mb-6">

@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, SafeAreaView, ScrollView } from 'react-native';
 import AntDesign from 'react-native-vector-icons/AntDesign'; 
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { authService } from '../../config/authService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 function GoogleIcon() {
   return <AntDesign name="google" size={24} color="#DB4437" />;
@@ -10,6 +12,8 @@ function GoogleIcon() {
 const LoginScreen = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   
   const router = useRouter();
   const { role } = useLocalSearchParams(); // Get the role parameter
@@ -30,14 +34,58 @@ const LoginScreen = () => {
     }
   };
 
-  const handleLogin = () => {
-    console.log(`Logging in as ${role} with:`, email, password);
-    // Add your login logic here based on the role
-    // For example, navigate to different dashboards based on role
-    if (role === 'Rider') {
-      router.push('/screens/rider-dashboard');
+  const handleLogin = async () => {
+    try {
+      setLoading(true);
+      setError('');
+
+      console.log('📧 Email being sent:', email);
+      console.log('🔑 Password being sent:', password); // Check if it's empty
+      console.log('👤 Role:', role);
+
+      if (!email || !password) {
+        setError('Please enter email and password');
+        setLoading(false);
+        return;
+      }
+
+      // Call backend API
+      const response = await authService.login(email, password, role as string);
+      
+      console.log('Login response:', response); // See what we get
+      
+      // Save tokens - match your backend response
+      await AsyncStorage.setItem('authToken', response.accesstoken); // Changed from 'token' to 'accesstoken'
+      await AsyncStorage.setItem('refreshToken', response.refreshToken); // Save refresh token too
+      await AsyncStorage.setItem('userRole', role as string);
+      // We don't have user._id in response, so skip it for now
+      // await AsyncStorage.setItem('userId', response.user._id);
+      
+      // Navigate based on role
+      if (role === 'Customer') {
+        router.replace({
+          pathname: '/home' as any,
+          params: { userRole: 'Customer' }
+        });
+      } else if (role === 'Pharmacist') {
+        router.replace({
+          pathname: '/home' as any,
+          params: { userRole: 'Pharmacist' }
+        });
+      } else if (role === 'Rider') {
+        router.push('/screens/rider-dashboard');
+      } else if (role === 'Admin') {
+        router.replace({
+          pathname: '/home' as any,
+          params: { userRole: 'Admin' }
+        });
+      }
+    } catch (err: any) {
+      setError(err.toString());
+      console.error('Login error:', err);
+    } finally {
+      setLoading(false);
     }
-    // Add other role-specific navigation here
   };
 
   const handleGoogleSignIn = () => {
@@ -104,14 +152,20 @@ const LoginScreen = () => {
               />
             </View>
 
+            {/* Show error message */}
+            {error && (
+              <Text className="text-red-600 text-sm mb-2">{error}</Text>
+            )}
+
             {/* Login Button */}
             <TouchableOpacity
-              className="w-full p-4 rounded-lg shadow-md"
-              style={{ backgroundColor: '#41A67E' }}
               onPress={handleLogin}
+              disabled={loading}
+              className="w-full p-4 rounded-lg shadow-md"
+              style={{ backgroundColor: loading ? '#9CA3AF' : '#41A67E' }}
             >
               <Text className="text-white text-center text-lg font-semibold">
-                Log In
+                {loading ? 'Logging in...' : 'Log In'}
               </Text>
             </TouchableOpacity>
 
