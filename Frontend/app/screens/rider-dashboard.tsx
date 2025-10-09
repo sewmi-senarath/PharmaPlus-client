@@ -35,8 +35,8 @@ export default function RiderDashboard() {
   const router = useRouter();
   const params = useLocalSearchParams();
   
-  const riderId = params.riderId ;
-  const riderName = (params.riderName ) || 'Kasun Perera';
+  const riderId = params.riderId as string;
+  const riderName = (params.riderName as string) || 'Kasun Perera';
 
   const [isOnline, setIsOnline] = useState(true);
   const [activeTab, setActiveTab] = useState<'active' | 'completed' | 'voice'>('active');
@@ -82,7 +82,7 @@ export default function RiderDashboard() {
     },
   ];
 
-  const completedOrders = [
+  const completedOrders: Order[] = [
     {
       id: 'ORD003',
       distance: '3.0 km',

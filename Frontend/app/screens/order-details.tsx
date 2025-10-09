@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 export default function OrderDetails() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const orderId = params.orderId;
+  const orderId = params.orderId as string;
 
   return (
     <>
