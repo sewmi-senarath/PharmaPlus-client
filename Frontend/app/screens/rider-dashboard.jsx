@@ -82,7 +82,7 @@ export default function RiderDashboard() {
     },
   ];
 
-  const completedOrders: Order[] = [
+  const completedOrders = [
     {
       id: 'ORD003',
       distance: '3.0 km',
