@@ -1,0 +1,148 @@
+import React, { useState } from 'react';
+import { View, Text, TextInput, TouchableOpacity, SafeAreaView } from 'react-native';
+import AntDesign from 'react-native-vector-icons/AntDesign'; 
+import { useRouter, useLocalSearchParams } from 'expo-router';
+
+function GoogleIcon() {
+  return <AntDesign name="google" size={24} color="#DB4437" />;
+}
+
+const LoginScreen = () => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  
+  const router = useRouter();
+  const { role } = useLocalSearchParams(); // Get the role parameter
+
+  // Display role-specific title
+  const getRoleTitle = () => {
+    switch(role) {
+      case 'Customer':
+        return 'Customer Login';
+      case 'Pharmacist':
+        return 'Pharmacist Login';
+      case 'Rider':
+        return 'Rider Login';
+      case 'Admin':
+        return 'Admin Login';
+      default:
+        return 'Welcome Back';
+    }
+  };
+
+  const handleLogin = () => {
+    console.log(`Logging in as ${role} with:`, email, password);
+    // Add your login logic here based on the role
+    // For example, navigate to different dashboards based on role
+    if (role === 'Rider') {
+      router.push('/screens/rider-dashboard');
+    }
+    // Add other role-specific navigation here
+  };
+
+  const handleGoogleSignIn = () => {
+    console.log(`Signing in with Google as ${role}`);
+  };
+
+  const handleGoBack = () => {
+    router.back(); // Go back to role selection
+  };
+
+  return (
+    <SafeAreaView className="flex-1 bg-gray-100">
+      <View className="flex-1 items-center justify-center p-6">
+
+        {/* === Card Container === */}
+        <View
+          className="w-full max-w-sm bg-white rounded-2xl p-6 shadow-lg border-t-4"
+          style={{ borderTopColor: '#41A67E' }}
+        >
+          {/* === Back Button === */}
+          <TouchableOpacity 
+            className="absolute left-4 top-4"
+            onPress={handleGoBack}
+          >
+            <AntDesign name="left" size={24} color="#41A67E" />
+          </TouchableOpacity>
+
+          {/* === Welcome Message with Role === */}
+          <Text className="text-xl font-semibold text-center mb-1 mt-6" style={{ color: '#41A67E' }}>
+            {getRoleTitle()}
+          </Text>
+
+          <Text className="text-gray-500 text-center mb-6 text-sm">
+            Sign in to continue as {role}
+          </Text>
+
+          {/* === Email Input === */}
+          <View className="mb-4">
+            <Text className="text-sm font-medium text-gray-700 mb-1">Email Address</Text>
+            <TextInput
+              className="w-full border border-gray-300 p-3 rounded-lg text-gray-700"
+              placeholder="you@example.com"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              value={email}
+              onChangeText={setEmail}
+            />
+          </View>
+
+          {/* === Password Input === */}
+          <View className="mb-6">
+            <Text className="text-sm font-medium text-gray-700 mb-1">Password</Text>
+            <TextInput
+              className="w-full border border-gray-300 p-3 rounded-lg text-gray-700"
+              placeholder="••••••••"
+              secureTextEntry
+              value={password}
+              onChangeText={setPassword}
+            />
+          </View>
+
+          {/* === Login Button === */}
+          <TouchableOpacity
+            className="w-full p-4 rounded-lg shadow-md"
+            style={{ backgroundColor: '#41A67E' }}
+            onPress={handleLogin}
+          >
+            <Text className="text-white text-center text-lg font-semibold">
+              Log In
+            </Text>
+          </TouchableOpacity>
+
+          {/* === OR Separator === */}
+          <View className="flex-row items-center my-6">
+            <View className="flex-1 h-[1px] bg-gray-300" />
+            <Text className="text-gray-500 text-sm mx-3">OR</Text>
+            <View className="flex-1 h-[1px] bg-gray-300" />
+          </View>
+
+          {/* === Google Sign In === */}
+          <TouchableOpacity
+            className="w-full flex-row items-center justify-center border border-gray-300 bg-white p-3 rounded-lg shadow-sm"
+            onPress={handleGoogleSignIn}
+          >
+            <GoogleIcon />
+            <Text className="text-gray-700 text-base font-medium ml-2">
+              Sign in with Google
+            </Text>
+          </TouchableOpacity>
+
+          {/* === Sign Up Link === */}
+          <View className="mt-8 flex-row justify-center">
+            <Text className="text-gray-600 text-sm">
+              Do not have an account?
+            </Text>
+            <TouchableOpacity onPress={() => console.log('Navigate to Sign Up')}>
+              <Text className="font-semibold ml-1" style={{ color: '#41A67E' }}>
+                Sign Up
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </SafeAreaView>
+  );
+};
+
+export default LoginScreen;

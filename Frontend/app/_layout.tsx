@@ -9,6 +9,23 @@ export default function RootLayout() {
         headerTintColor: '#fff',
         headerTitleStyle: { fontWeight: 'bold' },
       }}
-    />
+    >
+      <Stack.Screen 
+        name="index" 
+        options={{ headerShown: false }} 
+      />
+      <Stack.Screen 
+        name="screens/onboarding" 
+        options={{ headerShown: false }} 
+      />
+      <Stack.Screen 
+        name="screens/roleselection" 
+        options={{ headerShown: false }} 
+      />
+      <Stack.Screen 
+        name="screens/login" 
+        options={{ headerShown: false }} 
+      />
+    </Stack>
   );
 }
