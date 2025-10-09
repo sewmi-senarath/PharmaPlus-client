@@ -12,6 +12,8 @@ export default function RootLayout() {
     >
       {/* Hide parent header for the onboarding group to prevent double headers */}
       <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+      {/* Hide parent header for the auth group to prevent double headers */}
+      <Stack.Screen name="auth" options={{ headerShown: false }} />
     </Stack>
   );
 }

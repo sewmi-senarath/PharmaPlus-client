@@ -38,7 +38,7 @@ export default function Remote() {
         <Pressable onPress={() => router.push("/onboarding/features")} className="px-4 py-3 rounded-lg border">
           <Text className="text-gray-700">Previous</Text>
         </Pressable>
-        <Pressable onPress={() => router.replace("/screens/rider-dashboard")} className="px-5 py-3 rounded-lg bg-teal-600">
+        <Pressable onPress={() => router.replace("/auth/login")} className="px-5 py-3 rounded-lg bg-teal-600">
           <Text className="text-white font-medium">Get Started</Text>
         </Pressable>
       </View>
