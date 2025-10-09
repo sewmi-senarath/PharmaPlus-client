@@ -1,5 +1,6 @@
 import { http } from './http';
 import type { Medicine, UpsertMedicine, Order, Availability, PharmacyInfo } from '@/modules/pharmacy/types';
+const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 export const PharmacyAPI = {
   // Inventory
@@ -44,6 +45,21 @@ export const PharmacyAPI = {
   },
   markNotificationRead(id: string): Promise<{ ok: true }> {
     return http(`/pharmacy/notifications/${id}/read`, { method: 'PUT' });
+  },
+
+  //Pharmacy
+  async registerPharmacy(data: any) {
+    const response = await fetch(`${API_BASE}/pharmacy/add`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    
+    if (!response.ok) {
+      throw new Error('Registration failed');
+    }
+    
+    return response.json();
   },
 
   getInfo(): Promise<PharmacyInfo> {

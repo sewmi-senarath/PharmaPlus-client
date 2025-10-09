@@ -44,3 +44,45 @@ export type PharmacyInfo = {
   id: string;
   name: string;
 };
+
+export type Coordinates = {
+  lng: number;
+  lat: number;
+};
+
+export type Address = {
+  line1: string;
+  line2: string;
+  city: string;
+  district: string;
+  postalCode: string;
+  coordinates: Coordinates;
+};
+
+export type OpeningHour = {
+  day: number;
+  open: string;
+  close: string;
+  closed: boolean;
+};
+
+export type DocumentFile = {
+  uri: string;
+  name: string;
+  type: string;
+  size: number;
+} | null;
+
+export type PharmacyFormData = {
+  pharmacyName: string;
+  pharmacyEmail: string;
+  pharmacyPhone: string;
+  pharmacyLicenseNumber: string;
+  address: Address;
+  openingHours: OpeningHour[];
+  isAvailable: boolean;
+  is24x7: boolean;
+  pharmacyServices: string[];
+  deliveryRadiusKm: number;
+  registrationDocument: DocumentFile;
+};
