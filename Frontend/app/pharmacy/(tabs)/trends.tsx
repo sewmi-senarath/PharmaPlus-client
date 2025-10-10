@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, ScrollView } from 'react-native';
-import PharmacyHeader from '@/modules/pharmacy/components/PharmacyHeader';
-import { Card, CardContent } from '@/modules/pharmacy/components/ui/Card';
+import PharmacyHeader from '../components/ui/PharmacyHeader';
+import { Card, CardContent } from '../components/ui/Card';
 import { VictoryChart, VictoryLine, VictoryAxis, VictoryBar, VictoryTheme } from 'victory-native';
 
 export default function TrendsScreen() {

@@ -10,7 +10,7 @@ import {
   Keyboard,
 } from 'react-native';
 
-import Button from '@/modules/pharmacy/components/ui/Button';
+import Button from './components/ui/Button';
 import ProgressIndicator from './components/registration/ProgressIndicator';
 import Step1BasicInfo from './components/registration/Step1BasicInfo';
 import Step2Address from './components/registration/Step2Address';

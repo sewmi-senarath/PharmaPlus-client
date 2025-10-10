@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Switch, TextInput, ScrollView } from 'react-native';
-import PharmacyHeader from '../../src/modules/pharmacy/components/PharmacyHeader';
-import { Card, CardContent } from '../../src/modules/pharmacy/components/ui/Card';
-import Button from '../../src/modules/pharmacy/components/ui/Button';
-import { PharmacyAPI } from '../../src/modules/pharmacy/components/services/pharmacy.api';
-import type { Availability } from '../../src/modules/pharmacy/types';
+import PharmacyHeader from './components/ui/PharmacyHeader';
+import { Card, CardContent } from './components/ui/Card';
+import Button from './components/ui/Button';
+import { PharmacyAPI } from './components/services/pharmacy.api';
+import type { Availability } from '../types/pharmacy-types';
 import { router } from 'expo-router';
 
 export default function AvailabilityScreen() {

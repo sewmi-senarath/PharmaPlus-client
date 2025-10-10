@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TextInput, TouchableOpacity } from 'react-native';
-import { Card, CardContent } from '@/modules/pharmacy/components/ui/Card';
+import { Card, CardContent } from '../ui/Card';
 import ToggleSwitch from './ToggleSwitch';
 import { PharmacyFormData } from '../hooks/usePharmacyForm';
 

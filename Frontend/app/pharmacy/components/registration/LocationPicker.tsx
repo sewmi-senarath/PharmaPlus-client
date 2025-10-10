@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, Alert } from 'react-native';
 import * as Location from 'expo-location';
-import Button from '@/modules/pharmacy/components/ui/Button';
+import Button from '../ui/Button';
 
 type Coordinates = { lng: number; lat: number };
 

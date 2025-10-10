@@ -3,7 +3,7 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, Text, TextInput, View 
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
-import { medicineApi } from "@/lib/api";
+import { medicineApi } from "../../lib/types";
 import { useCartContext } from "../cart/CartContext";
 import CartDrawer from "../cart/CartDrawer";
 

@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, ScrollView, Switch, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import PharmacyHeader from '@/modules/pharmacy/components/PharmacyHeader';
-import { PharmacyAPI } from '@/modules/pharmacy/components/services/pharmacy.api';
-import type { PharmacyProfile, NotificationSettings, UserPreferences } from '@/modules/pharmacy/types';
+import PharmacyHeader from '../components/ui/PharmacyHeader';
+import { PharmacyAPI } from '../components/services/pharmacy.api';
+import type { PharmacyProfile, NotificationSettings, UserPreferences } from '../../types/pharmacy-types';
 import { router } from 'expo-router';
 
 export default function SettingsScreen() {

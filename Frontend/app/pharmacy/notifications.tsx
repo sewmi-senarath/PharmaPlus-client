@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
-import PharmacyHeader from '../../src/modules/pharmacy/components/PharmacyHeader';
-import { Card, CardContent } from '../../src/modules/pharmacy/components/ui/Card';
-import { PharmacyAPI } from '../../src/modules/pharmacy/components/services/pharmacy.api';
+import PharmacyHeader from './components/ui/PharmacyHeader';
+import { Card, CardContent } from './components/ui/Card';
+import { PharmacyAPI } from './components/services/pharmacy.api';
 
 type Noti = { id: string; title: string; message: string; createdAt: string; read?: boolean };
 

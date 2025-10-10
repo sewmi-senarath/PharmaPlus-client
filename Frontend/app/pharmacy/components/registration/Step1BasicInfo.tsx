@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TextInput } from 'react-native';
-import { Card, CardContent } from '@/modules/pharmacy/components/ui/Card';
+import { Card, CardContent } from '../ui/Card';
 import DocumentPicker from './DocumentPicker';
 import { PharmacyFormData } from '../hooks/usePharmacyForm';
 

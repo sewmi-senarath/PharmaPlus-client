@@ -2,9 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 
-import { Card, CardContent } from '@/modules/pharmacy/components/ui/Card';
-import Button from '@/modules/pharmacy/components/ui/Button';
-import { PharmacyAPI } from '@/modules/pharmacy/components/services/pharmacy.api';
+import { Card, CardContent } from '../components/ui/Card';
+import Button from '../components/ui/Button';
+import { PharmacyAPI } from '../components/services/pharmacy.api';
 
 export default function DashboardScreen() {
   const [pharmacyName, setPharmacyName] = useState<string>('Pharmacy');
