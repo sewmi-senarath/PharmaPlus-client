@@ -36,7 +36,7 @@ export default function Roles() {
 
       <View className="absolute left-0 right-0 flex-row justify-between" style={{ bottom: Math.max(insets.bottom, 16), paddingHorizontal: 16 }}>
         <Pressable onPress={() => router.replace("/")} className="px-4 py-3 rounded-lg border">
-          <Text className="text-gray-700">Skip</Text>
+          <Text className="text-gray-700">Previous</Text>
         </Pressable>
         <Pressable onPress={() => router.push("/onboarding/features") } className="px-5 py-3 rounded-lg bg-teal-600">
           <Text className="text-white font-medium">Next</Text>
