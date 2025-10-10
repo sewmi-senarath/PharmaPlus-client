@@ -59,6 +59,7 @@
           }
         }
       ],
+
       [
         "expo-location",
         {
@@ -70,10 +71,13 @@
         }
       ],
       [
-        "expo-document-picker"
+        "expo-document-picker",
+        { "isAndroidForegroundServiceEnabled": false }
       ],
-      "expo-barcode-scanner"
+      "expo-barcode-scanner",
+      "expo-speech-recognition"
     ],
+      
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
