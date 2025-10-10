@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, SafeAreaView, Modal } from 'react-native';
 import AntDesign from 'react-native-vector-icons/AntDesign';
-import { useRouter } from 'expo-router';
-import { useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 
 // Translation object
 const translations = {
@@ -365,15 +364,6 @@ export default function HomeScreen() {
             <TouchableOpacity className="bg-white p-6 rounded-xl flex-1 items-center min-w-[45%]">
               <AntDesign name="shoppingcart" size={32} color="#41A67E" />
               <Text className="text-gray-700 font-semibold mt-2">{t('trackOrder')}</Text>
-            </TouchableOpacity>
-
-            {/* Add Payment Button */}
-            <TouchableOpacity 
-              onPress={() => router.push('/home/payment')}
-              className="bg-white p-6 rounded-xl flex-1 items-center min-w-[45%]"
-            >
-              <AntDesign name="creditcard" size={32} color="#41A67E" />
-              <Text className="text-gray-700 font-semibold mt-2">Payment</Text>
             </TouchableOpacity>
           </View>
         </View>
