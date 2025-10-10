@@ -34,6 +34,17 @@ const SignUpScreen = () => {
     }
   };
 
+  // Convert frontend role to backend role
+  const getRoleForBackend = (frontendRole: string) => {
+    const roleMap: any = {
+      'Customer': 'customer',
+      'Pharmacist': 'pharmacist',
+      'Rider': 'driver', // Backend uses "driver" not "rider"
+      'Admin': 'admin',
+    };
+    return roleMap[frontendRole] || frontendRole.toLowerCase();
+  };
+
   const handleSignUp = () => {
     // Validate passwords match
     if (password !== confirmPassword) {
@@ -42,12 +53,12 @@ const SignUpScreen = () => {
     }
 
     // Prepare data based on role
-    const userData = {
+    const userData: any = {
       name: fullName,
       email,
       phone,
       password,
-      role: role?.toLowerCase(),
+      role: getRoleForBackend(role as string),
     };
 
     // Add role-specific fields

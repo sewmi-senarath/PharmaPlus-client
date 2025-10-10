@@ -1,8 +1,13 @@
 import { Tabs } from 'expo-router';
 import AntDesign from 'react-native-vector-icons/AntDesign';
+//import { StripeProvider } from '@stripe/stripe-react-native';
+//import { loadStripe } from '@stripe/stripe-js';
+
 
 export default function HomeLayout() {
   return (
+   // <StripeProvider publishableKey="pk_test_51PZwFL2MW7Q4GR3Y4iPIqKXR1t8Hx0qiAYqUdqvtpyHQZcLQXhJo14WnBmcPw1WubLIMcMtYNbJVUfYzf49xMWnB00A6K9x9fY">
+    
     <Tabs
       screenOptions={{
         headerShown: false,
@@ -54,6 +59,15 @@ export default function HomeLayout() {
         }}
       />
       <Tabs.Screen
+        name="payment"
+        options={{
+          title: 'Payment',
+          tabBarIcon: ({ color, size }) => (
+            <AntDesign name="creditcard" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="profile"
         options={{
           title: 'Profile',
@@ -63,5 +77,6 @@ export default function HomeLayout() {
         }}
       />
     </Tabs>
+   // </StripeProvider>
   );
 }
