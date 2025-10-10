@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, SafeAreaView, ScrollView } from 'react-native';
 import AntDesign from 'react-native-vector-icons/AntDesign'; 
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { authService } from '../../config/authService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -9,29 +9,62 @@ function GoogleIcon() {
   return <AntDesign name="google" size={24} color="#DB4437" />;
 }
 
+// Role Card Component
+const RoleCard = ({ iconName, roleTitle, isSelected, onPress }: {
+  iconName: string;
+  roleTitle: string;
+  isSelected: boolean;
+  onPress: () => void;
+}) => (
+  <TouchableOpacity
+    className={`flex-1 p-4 mx-1 rounded-xl border-2 items-center ${
+      isSelected ? 'border-teal-600 bg-teal-50' : 'border-gray-200 bg-white'
+    }`}
+    onPress={onPress}
+  >
+    <AntDesign 
+      name={iconName} 
+      size={28} 
+      color={isSelected ? '#41A67E' : '#6B7280'} 
+    />
+    <Text className={`text-xs font-semibold mt-2 ${
+      isSelected ? 'text-teal-600' : 'text-gray-600'
+    }`}>
+      {roleTitle}
+    </Text>
+    {isSelected && (
+      <View className="absolute top-1 right-1">
+        <AntDesign name="checkcircle" size={16} color="#41A67E" />
+      </View>
+    )}
+  </TouchableOpacity>
+);
+
 const LoginScreen = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [selectedRole, setSelectedRole] = useState<string>('Customer'); // Default to Customer
   
   const router = useRouter();
-  const { role } = useLocalSearchParams(); // Get the role parameter
 
-  // Display role-specific title
-  const getRoleTitle = () => {
-    switch(role) {
-      case 'Customer':
-        return 'Customer Login';
-      case 'Pharmacist':
-        return 'Pharmacist Login';
-      case 'Rider':
-        return 'Rider Login';
-      case 'Admin':
-        return 'Admin Login';
-      default:
-        return 'Welcome Back';
-    }
+  const roles = [
+    { id: 'Customer', icon: 'user', title: 'Customer' },
+    { id: 'Pharmacist', icon: 'inbox', title: 'Pharmacist' },
+    { id: 'Rider', icon: 'rocket', title: 'Rider' },
+    { id: 'Admin', icon: 'lock', title: 'Admin' },
+  ];
+
+  // Convert frontend role to backend role
+  const getRoleForBackend = (frontendRole: string) => {
+    const roleMap: any = {
+      'Customer': 'customer',
+      'Pharmacist': 'pharmacist',
+      'Rider': 'driver', // Backend uses "driver" not "rider"
+      'Admin': 'admin',
+    };
+    return roleMap[frontendRole] || frontendRole.toLowerCase();
   };
 
   const handleLogin = async () => {
@@ -39,61 +72,72 @@ const LoginScreen = () => {
       setLoading(true);
       setError('');
 
-      console.log('📧 Email being sent:', email);
-      console.log('🔑 Password being sent:', password); // Check if it's empty
-      console.log('👤 Role:', role);
-
-      if (!email || !password) {
+      if (!email || !password ) {
         setError('Please enter email and password');
         setLoading(false);
         return;
       }
 
-      // Call backend API
-      const response = await authService.login(email, password, role as string);
+      if (!selectedRole) {
+        setError('Please select a role');
+        setLoading(false);
+        return;
+      }
+
+      const backendRole = getRoleForBackend(selectedRole);
+      console.log('📧 Email:', email);
+      console.log('👤 Frontend Role:', selectedRole);
+      console.log('🔄 Backend Role:', backendRole);
+
+      // Call backend API with converted role
+      const response = await authService.login(email, password, backendRole);
       
-      console.log('Login response:', response); // See what we get
+      console.log('✅ Login successful!');
       
-      // Save tokens - match your backend response
-      await AsyncStorage.setItem('authToken', response.accesstoken); // Changed from 'token' to 'accesstoken'
-      await AsyncStorage.setItem('refreshToken', response.refreshToken); // Save refresh token too
-      await AsyncStorage.setItem('userRole', role as string);
-      // We don't have user._id in response, so skip it for now
-      // await AsyncStorage.setItem('userId', response.user._id);
+      // Save tokens and user data
+      await AsyncStorage.setItem('authToken', response.accesstoken);
+      await AsyncStorage.setItem('refreshToken', response.refreshToken);
+      await AsyncStorage.setItem('userRole', selectedRole);
       
-      // Navigate based on role
-      if (role === 'Customer') {
-        router.replace({
-          pathname: '/home' as any,
-          params: { userRole: 'Customer' }
-        });
-      } else if (role === 'Pharmacist') {
-        router.replace({
-          pathname: '/home' as any,
-          params: { userRole: 'Pharmacist' }
-        });
-      } else if (role === 'Rider') {
-        router.push('/screens/rider-dashboard');
-      } else if (role === 'Admin') {
-        router.replace({
-          pathname: '/home' as any,
-          params: { userRole: 'Admin' }
-        });
+      // Navigate based on selected role
+      switch(selectedRole) {
+        case 'Customer':
+          router.replace({
+            pathname: '/home' as any,
+            params: { userRole: 'customer' }
+          });
+          break;
+        case 'Pharmacist':
+          router.replace({
+            pathname: '/home' as any,
+            params: { userRole: 'pharmacist' }
+          });
+          break;
+        case 'Rider':
+          router.replace('/screens/rider-dashboard' as any);
+          break;
+        case 'Admin':
+          // Admin can access home dashboard with full privileges
+          router.replace({
+            pathname: '/home' as any,
+            params: { userRole: 'Admin' }
+          });
+          break;
+        default:
+          router.replace('/home' as any);
       }
     } catch (err: any) {
-      setError(err.toString());
-      console.error('Login error:', err);
+      const errorMessage = err.response?.data?.message || err.message || 'Login failed';
+      setError(errorMessage);
+      console.error('❌ Login error:', err);
     } finally {
       setLoading(false);
     }
   };
 
   const handleGoogleSignIn = () => {
-    console.log(`Signing in with Google as ${role}`);
-  };
-
-  const handleGoBack = () => {
-    router.back(); // Go back to role selection
+    console.log(`Signing in with Google as ${selectedRole}`);
+    // TODO: Implement Google Sign-In with selected role
   };
 
   return (
@@ -110,22 +154,32 @@ const LoginScreen = () => {
             className="w-full max-w-sm bg-white rounded-2xl p-6 shadow-lg border-t-4"
             style={{ borderTopColor: '#41A67E' }}
           >
-            {/* Back Button */}
-            <TouchableOpacity 
-              className="absolute left-4 top-4"
-              onPress={handleGoBack}
-            >
-              <AntDesign name="left" size={24} color="#41A67E" />
-            </TouchableOpacity>
-
             {/* Title */}
-            <Text className="text-xl font-semibold text-center mb-1 mt-6" style={{ color: '#41A67E' }}>
-              {getRoleTitle()}
+            <Text className="text-2xl font-bold text-center mb-2 mt-2" style={{ color: '#41A67E' }}>
+              Welcome to PharmaPlus
             </Text>
 
-            <Text className="text-gray-500 text-center mb-6 text-sm">
-              Sign in to continue as {role}
+            <Text className="text-gray-500 text-center mb-4 text-sm">
+              Select your role and sign in
             </Text>
+
+            {/* Role Selection */}
+            <View className="mb-4">
+              <Text className="text-sm font-medium text-gray-700 mb-2">Select Role</Text>
+              <View className="flex-row flex-wrap">
+                {roles.map((role) => {
+                  return (
+                    <RoleCard
+                      key={role.id}
+                      iconName={role.icon}
+                      roleTitle={role.title}
+                      isSelected={selectedRole === role.id}
+                      onPress={() => setSelectedRole(role.id)}
+                    />
+                  );
+                })}
+              </View>
+            </View>
 
             {/* Email Input */}
             <View className="mb-4">
@@ -194,7 +248,7 @@ const LoginScreen = () => {
               </Text>
               <TouchableOpacity onPress={() => router.push({
                 pathname: '/screens/signup' as any,
-                params: { role: role }
+                params: { role: selectedRole }
               })}>
                 <Text className="font-semibold ml-1" style={{ color: '#41A67E' }}>
                   Sign Up

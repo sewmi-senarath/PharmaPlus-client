@@ -9,7 +9,7 @@ export const authService = {
       const response = await api.post('/users/login', {
         email,
         password,
-        // Remove role if backend doesn't use it
+        role: role, // Role already converted before calling this function
       });
       
       console.log('✅ Backend response:', response.data);

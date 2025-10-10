@@ -19,10 +19,6 @@ export default function RootLayout() {
         options={{ headerShown: false }} 
       />
       <Stack.Screen 
-        name="screens/roleselection" 
-        options={{ headerShown: false }} 
-      />
-      <Stack.Screen 
         name="screens/login" 
         options={{ headerShown: false }} 
       />

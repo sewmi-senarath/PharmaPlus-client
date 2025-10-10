@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, SafeAreaView, Modal } from 'react-native';
 import AntDesign from 'react-native-vector-icons/AntDesign';
-import { useRouter } from 'expo-router';
-import { useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 
 // Translation object
 const translations = {
@@ -106,6 +105,7 @@ export default function HomeScreen() {
   const { userRole } = useLocalSearchParams(); // Get the role
   const [selectedLanguage, setSelectedLanguage] = useState<LanguageCode>('en'); // Add type here
   const [showLanguageModal, setShowLanguageModal] = useState(false);
+  const [showEmergencyModal, setShowEmergencyModal] = useState(false); // Add this
 
   const languages = [
     { code: 'en', label: 'English', flag: '🇬🇧' },
@@ -124,8 +124,7 @@ export default function HomeScreen() {
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-        {/* Header */
-        }
+        {/* Header */}
         <View className="bg-teal-600 px-4 py-6 pb-8">
           <View className="flex-row justify-between items-start">
             <View className="flex-1">
@@ -139,7 +138,17 @@ export default function HomeScreen() {
             </View>
             
             <View className="flex-row items-center gap-3">
-              {/* Language Selector Button */}
+              {/* Emergency Button */}
+              {userRole === 'Customer' && (
+                <TouchableOpacity 
+                  className="bg-red-500 rounded-full w-10 h-10 items-center justify-center"
+                  onPress={() => setShowEmergencyModal(true)}
+                >
+                  <AntDesign name="warning" size={24} color="white" />
+                </TouchableOpacity>
+              )}
+
+              {/* Language Selector */}
               <TouchableOpacity 
                 className="bg-white/20 rounded-lg px-3 py-2 flex-row items-center"
                 onPress={() => setShowLanguageModal(true)}
@@ -150,6 +159,14 @@ export default function HomeScreen() {
                 <Text className="text-white font-semibold">
                   {languages.find(l => l.code === selectedLanguage)?.label}
                 </Text>
+              </TouchableOpacity>
+
+              {/* Add Payment Button HERE */}
+              <TouchableOpacity 
+                onPress={() => router.push('/home/payment')}
+                className="bg-white/30 rounded-full w-10 h-10 items-center justify-center"
+              >
+                <AntDesign name="creditcard" size={20} color="white" />
               </TouchableOpacity>
               
               {/* Profile Icon */}
@@ -208,81 +225,93 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </Modal>
 
-        {/* Emergency Services - Now translated */}
-        {userRole === 'Customer' && (
-          <View className="bg-red-50 mx-4 -mt-4 rounded-xl p-4 border border-red-200">
-            <View className="flex-row items-center mb-3">
-              <AntDesign name="warning" size={24} color="#DC2626" />
-              <Text className="text-red-600 text-lg font-bold ml-2">{t('emergencyServices')}</Text>
-            </View>
-            
-            <View className="flex-row gap-3 mb-3">
-              <TouchableOpacity className="flex-1 bg-red-600 py-4 rounded-lg flex-row items-center justify-center">
-                <AntDesign name="car" size={20} color="white" />
-                <Text className="text-white font-semibold ml-2">{t('callAmbulance')}</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity className="flex-1 bg-white py-4 rounded-lg flex-row items-center justify-center border border-gray-300">
-                <AntDesign name="enviromento" size={20} color="#41A67E" />
-                <Text className="text-gray-700 font-semibold ml-2">{t('shareLocation')}</Text>
-              </TouchableOpacity>
+        {/* Emergency Modal - Add this */}
+        <Modal
+          visible={showEmergencyModal}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setShowEmergencyModal(false)}
+        >
+          <View className="flex-1 bg-black/50 justify-end">
+            <View className="bg-white rounded-t-3xl p-6 max-h-[80%]">
+              <View className="flex-row justify-between items-center mb-4">
+                <Text className="text-2xl font-bold text-red-600">
+                  {t('emergencyServices')}
+                </Text>
+                <TouchableOpacity onPress={() => setShowEmergencyModal(false)}>
+                  <AntDesign name="close" size={24} color="#6B7280" />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView showsVerticalScrollIndicator={false}>
+                {/* Emergency Buttons */}
+                <View className="flex-row gap-3 mb-6">
+                  <TouchableOpacity className="flex-1 bg-red-600 py-4 rounded-lg flex-row items-center justify-center">
+                    <AntDesign name="car" size={20} color="white" />
+                    <Text className="text-white font-semibold ml-2">{t('callAmbulance')}</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity className="flex-1 bg-teal-600 py-4 rounded-lg flex-row items-center justify-center">
+                    <AntDesign name="enviromento" size={20} color="white" />
+                    <Text className="text-white font-semibold ml-2">{t('shareLocation')}</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Emergency Contacts */}
+                <Text className="text-lg font-bold text-gray-800 mb-3">{t('emergencyContacts')}</Text>
+                
+                <TouchableOpacity className="bg-gray-50 p-4 rounded-xl mb-3 flex-row items-center justify-between">
+                  <View className="flex-row items-center flex-1">
+                    <View className="bg-red-100 p-3 rounded-full">
+                      <AntDesign name="car" size={24} color="#DC2626" />
+                    </View>
+                    <View className="ml-4 flex-1">
+                      <Text className="font-semibold text-gray-800">{t('ambulance')}</Text>
+                      <Text className="text-gray-600">1990</Text>
+                      <View className="bg-green-100 px-2 py-1 rounded mt-1 self-start">
+                        <Text className="text-green-700 text-xs">{t('available247')}</Text>
+                      </View>
+                    </View>
+                  </View>
+                  <AntDesign name="phone" size={24} color="#41A67E" />
+                </TouchableOpacity>
+
+                <TouchableOpacity className="bg-gray-50 p-4 rounded-xl mb-3 flex-row items-center justify-between">
+                  <View className="flex-row items-center flex-1">
+                    <View className="bg-blue-100 p-3 rounded-full">
+                      <AntDesign name="medicinebox" size={24} color="#2563EB" />
+                    </View>
+                    <View className="ml-4 flex-1">
+                      <Text className="font-semibold text-gray-800">{t('hospital')}</Text>
+                      <Text className="text-gray-600">+94 11 234 5678</Text>
+                      <Text className="text-gray-500 text-xs">2.3 km</Text>
+                      <View className="bg-green-100 px-2 py-1 rounded mt-1 self-start">
+                        <Text className="text-green-700 text-xs">{t('available247')}</Text>
+                      </View>
+                    </View>
+                  </View>
+                  <AntDesign name="phone" size={24} color="#41A67E" />
+                </TouchableOpacity>
+
+                <TouchableOpacity className="bg-gray-50 p-4 rounded-xl mb-3 flex-row items-center justify-between">
+                  <View className="flex-row items-center flex-1">
+                    <View className="bg-purple-100 p-3 rounded-full">
+                      <AntDesign name="warning" size={24} color="#9333EA" />
+                    </View>
+                    <View className="ml-4 flex-1">
+                      <Text className="font-semibold text-gray-800">{t('poisonControl')}</Text>
+                      <Text className="text-gray-600">+94 11 269 1111</Text>
+                      <View className="bg-green-100 px-2 py-1 rounded mt-1 self-start">
+                        <Text className="text-green-700 text-xs">{t('available247')}</Text>
+                      </View>
+                    </View>
+                  </View>
+                  <AntDesign name="phone" size={24} color="#41A67E" />
+                </TouchableOpacity>
+              </ScrollView>
             </View>
           </View>
-        )}
-
-        {/* Emergency Contacts - Now translated */}
-        <View className="mx-4 mt-6">
-          <Text className="text-lg font-bold text-gray-800 mb-3">{t('emergencyContacts')}</Text>
-          
-          <TouchableOpacity className="bg-white p-4 rounded-xl mb-3 flex-row items-center justify-between">
-            <View className="flex-row items-center flex-1">
-              <View className="bg-red-100 p-3 rounded-full">
-                <AntDesign name="car" size={24} color="#DC2626" />
-              </View>
-              <View className="ml-4 flex-1">
-                <Text className="font-semibold text-gray-800">{t('ambulance')}</Text>
-                <Text className="text-gray-600">1990</Text>
-                <View className="bg-green-100 px-2 py-1 rounded mt-1 self-start">
-                  <Text className="text-green-700 text-xs">{t('available247')}</Text>
-                </View>
-              </View>
-            </View>
-            <AntDesign name="phone" size={24} color="#41A67E" />
-          </TouchableOpacity>
-
-          <TouchableOpacity className="bg-white p-4 rounded-xl mb-3 flex-row items-center justify-between">
-            <View className="flex-row items-center flex-1">
-              <View className="bg-blue-100 p-3 rounded-full">
-                <AntDesign name="medicinebox" size={24} color="#2563EB" />
-              </View>
-              <View className="ml-4 flex-1">
-                <Text className="font-semibold text-gray-800">{t('hospital')}</Text>
-                <Text className="text-gray-600">+94 11 234 5678</Text>
-                <Text className="text-gray-500 text-xs">2.3 km</Text>
-                <View className="bg-green-100 px-2 py-1 rounded mt-1 self-start">
-                  <Text className="text-green-700 text-xs">{t('available247')}</Text>
-                </View>
-              </View>
-            </View>
-            <AntDesign name="phone" size={24} color="#41A67E" />
-          </TouchableOpacity>
-
-          <TouchableOpacity className="bg-white p-4 rounded-xl mb-3 flex-row items-center justify-between">
-            <View className="flex-row items-center flex-1">
-              <View className="bg-purple-100 p-3 rounded-full">
-                <AntDesign name="warning" size={24} color="#9333EA" />
-              </View>
-              <View className="ml-4 flex-1">
-                <Text className="font-semibold text-gray-800">{t('poisonControl')}</Text>
-                <Text className="text-gray-600">+94 11 269 1111</Text>
-                <View className="bg-green-100 px-2 py-1 rounded mt-1 self-start">
-                  <Text className="text-green-700 text-xs">{t('available247')}</Text>
-                </View>
-              </View>
-            </View>
-            <AntDesign name="phone" size={24} color="#41A67E" />
-          </TouchableOpacity>
-        </View>
+        </Modal>
 
         {/* Medical Information - Now translated */}
         <View className="mx-4 mt-6 bg-yellow-50 p-4 rounded-xl border border-yellow-200">

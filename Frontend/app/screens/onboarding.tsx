@@ -20,8 +20,8 @@ export default function OnboardingScreen() {
     if (currentIndex < onboardingImages.length - 1) {
       setCurrentIndex(currentIndex + 1);
     } else {
-      // Last screen, go to role selection
-      router.replace('/screens/roleselection');
+      // Last screen, go to login
+      router.replace('/screens/login');
     }
   };
 
@@ -32,7 +32,7 @@ export default function OnboardingScreen() {
   };
 
   const handleSkip = () => {
-    router.replace('/screens/roleselection');
+    router.replace('/screens/login');
   };
 
   return (
