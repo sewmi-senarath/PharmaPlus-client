@@ -1,81 +1,220 @@
-import React, { useMemo, useState } from 'react';
-import { View, Text, TextInput, ScrollView } from 'react-native';
-import PharmacyHeader from '../../src/modules/pharmacy/components/PharmacyHeader';
-import { Card, CardContent } from '../../src/modules/pharmacy/components/ui/Card';
-import Button from '../../src/modules/pharmacy/components/ui/Button';
-import type { UpsertMedicine } from '../../src/modules/pharmacy/types';
-import { PharmacyAPI } from '../../src/modules/pharmacy/components/services/pharmacy.api';
-import { router } from 'expo-router';
+// app/pharmacy/add-medicine.tsx
+import React, { useEffect, useState } from "react";
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  Alert,
+  ActivityIndicator,
+  Image,
+  StyleSheet,
+} from "react-native";
+import { Camera, CameraView } from "expo-camera";
+import * as ImagePicker from "expo-image-picker";
+import { Picker } from "@react-native-picker/picker";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import axios from "axios";
+import { useLocalSearchParams, router } from "expo-router";
+import { Ionicons } from '@expo/vector-icons';
 
-const CATS = ['Tablets','Syrup','Injection','Capsules','Drops','Ointment','Inhaler'] as const;
-const ADVICE: Record<string,string> = {
-  Tablets:'Store in a cool, dry place away from sunlight.',
-  Syrup:'Store at room temperature; shake well before use.',
-  Injection:'Refrigerate 2-8°C. Do not freeze.',
-  Capsules:'Keep dry; avoid heat.', Drops:'Follow bottle instructions.',
-  Ointment:'Store at room temp; close tube tightly.',
-  Inhaler:'Keep away from heat and sunlight.',
+// Type definitions for the form state and API suggestions
+type FormState = {
+  medicineName: string;
+  genericName: string;
+  brandName: string;
+  dosage: string;
+  strength: string;
+  doseForm: string;
+  route: string;
+  category: string;
+  manufacturer: string;
+  drugCode: string;
+  price: string;
+  stockQty: string;
+  minQty: string;
+  batchNo: string;
+  expiryDate: string;
+  barcodes: string[];
+  requiresPrescription: boolean;
+  packSize: string;
+  description: string;
+  usageInstructions: string;
 };
 
-export default function AddMedicineScreen() {
-  const [form, setForm] = useState<UpsertMedicine>({
-    name:'', category:'Tablets', price:0, stockQty:0, expiryDate: new Date().toISOString().slice(0,10),
+type Suggestion = {
+  _id: string;
+  genericName: string;
+  brandNames?: string[];
+  strength?: string;
+  doseForm?: string;
+  route?: string;
+  manufacturer?: string;
+  atcCode?: string;
+  packSize?: string;
+};
+
+const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "";
+
+const AddMedicineScreen: React.FC = () => {
+  const params = useLocalSearchParams();
+  const { pharmacyId } = params;
+
+  const [entryMethod, setEntryMethod] = useState<"manual" | "barcode">("manual");
+  const [showScanner, setShowScanner] = useState(false);
+  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  const [scanned, setScanned] = useState(false);
+
+  const [formData, setFormData] = useState<FormState>({
+    medicineName: "", genericName: "", brandName: "", dosage: "", strength: "",
+    doseForm: "Tablet", route: "Oral", category: "Other", manufacturer: "", drugCode: "",
+    price: "", stockQty: "", minQty: "10", batchNo: "", expiryDate: "", barcodes: [],
+    requiresPrescription: false, packSize: "", description: "", usageInstructions: "",
   });
-  const [saving, setSaving] = useState(false);
-  const storageAdvice = useMemo(() => ADVICE[form.category] ?? '', [form.category]);
+  const [loading, setLoading] = useState(false);
+  const [images, setImages] = useState<ImagePicker.ImagePickerAsset[]>([]);
 
-  const set = <K extends keyof UpsertMedicine>(k: K, v: UpsertMedicine[K]) => setForm(p => ({...p, [k]: v}));
+  // Request camera permissions on component mount
+  useEffect(() => {
+    const getCameraPermissions = async () => {
+      const { status } = await Camera.requestCameraPermissionsAsync();
+      setHasPermission(status === "granted");
+    };
+    getCameraPermissions();
+  }, []);
 
-  const save = async () => {
-    setSaving(true);
+  // Barcode scanning handler
+  const handleBarcodeScanned = async ({ type, data }: { type: string; data: string }) => {
+    setScanned(true); // Prevent multiple scans
+    setShowScanner(false);
+    setLoading(true);
+    
     try {
-      await PharmacyAPI.createMedicine({ ...form, storageAdvice });
-      router.replace('/pharmacy/inventory');
-    } finally { setSaving(false); }
+      const token = await AsyncStorage.getItem("accessToken");
+      const res = await axios.post(
+        `${API_URL}/api/medicine/pharmacies/${pharmacyId}/scan`,
+        { gtin: data, createDraft: false },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      const body = res.data;
+
+      if (body.success && body.match === "master") {
+        setFormData((prev) => ({ ...prev, ...(body.autoFilledData as any), barcodes: [data] }));
+        Alert.alert("Medicine Found!", "Information auto-filled. Please complete price and stock details.");
+      } else if (body.success && body.match === "existing") {
+        Alert.alert("Already in Inventory", "This medicine is already in your inventory.", [
+          { 
+            text: "View", 
+            onPress: () => router.push({ 
+              pathname: "/pharmacy/medicine-details/medicine-id", 
+              params: { id: body.medicine._id } 
+            }) 
+          },
+          { text: "OK" },
+        ]);
+      } else {
+        Alert.alert("Not Found", "Medicine not found. Please enter details manually.", [
+            { text: "OK", onPress: () => setScanned(false) } // Allow scanning again
+        ]);
+        setFormData((prev) => ({ ...prev, barcodes: [data] }));
+      }
+    } catch (e) {
+      Alert.alert("Error", "Failed to process barcode. Please try again.", [
+        { text: "OK", onPress: () => setScanned(false) } // Allow scanning again
+      ]);
+      console.error("scan error:", e);
+    } finally {
+      setLoading(false);
+    }
   };
+  
+  // Your existing functions for handling form submission and image picking
+  const handleSubmit = async () => { /* ... your existing logic ... */ };
+  const pickImage = async () => { /* ... your existing logic ... */ };
+
+  if (hasPermission === null) {
+    return <View className="flex-1 justify-center items-center"><ActivityIndicator /></View>;
+  }
+  if (hasPermission === false) {
+    return <Text className="text-center mt-12 p-4">No access to camera. Please enable it in your phone settings.</Text>;
+  }
 
   return (
-    <View className="flex-1 bg-white">
-      <PharmacyHeader title="Add Medicine" showBack onBack={() => router.back()} />
-      <ScrollView contentContainerClassName="p-4 gap-4">
-        <Card><CardContent>
-          <Text className="mb-1">Medicine Name</Text>
-          <TextInput value={form.name} onChangeText={t=>set('name', t)} placeholder="e.g., Paracetamol 500mg" className="h-12 rounded-xl border px-3 mb-3" />
+    <ScrollView className="flex-1 bg-gray-50">
+      <View className="p-4 bg-white">
+        <Text className="text-xl font-bold mb-3 text-gray-800">Add a New Medicine</Text>
+        <View className="flex-row space-x-3">
+          <TouchableOpacity
+            className={`flex-1 p-4 rounded-lg flex-row items-center justify-center space-x-2 ${entryMethod === "manual" ? "bg-[#139D92]" : "bg-white border border-gray-300"}`}
+            onPress={() => setEntryMethod("manual")}
+          >
+            <Ionicons name="create-outline" size={20} color={entryMethod === "manual" ? "white" : "#4B5563"} />
+            <Text className={`font-semibold ${entryMethod === "manual" ? "text-white" : "text-gray-700"}`}>Manual Entry</Text>
+          </TouchableOpacity>
 
-          <Text className="mb-1">Category</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3">
-            {CATS.map(c => (
-              <Button key={c} title={c} variant={form.category===c?'solid':'outline'} className="mr-2 h-10 px-3" onPress={()=>set('category', c)} />
-            ))}
-          </ScrollView>
-
-          <View className="flex-row gap-3">
-            <View className="flex-1">
-              <Text className="mb-1">Price (LKR)</Text>
-              <TextInput keyboardType="numeric" value={String(form.price||0)} onChangeText={t=>set('price', Number(t)||0)} className="h-12 rounded-xl border px-3" />
-            </View>
-            <View className="flex-1">
-              <Text className="mb-1">Stock Qty</Text>
-              <TextInput keyboardType="numeric" value={String(form.stockQty||0)} onChangeText={t=>set('stockQty', Number(t)||0)} className="h-12 rounded-xl border px-3" />
-            </View>
-          </View>
-
-          <Text className="mt-3 mb-1">Expiry Date (YYYY-MM-DD)</Text>
-          <TextInput value={form.expiryDate} onChangeText={t=>set('expiryDate', t)} className="h-12 rounded-xl border px-3" />
-
-          {storageAdvice ? (
-            <Card className="bg-blue-50 border-blue-200 mt-4"><CardContent>
-              <Text className="font-medium mb-1 text-blue-900">Storage Advisor</Text>
-              <Text className="text-blue-800">{storageAdvice}</Text>
-            </CardContent></Card>
-          ) : null}
-        </CardContent></Card>
-
-        <View className="flex-row gap-3">
-          <Button title="Cancel" variant="outline" className="flex-1" onPress={()=>router.back()} />
-          <Button title={saving ? 'Saving…':'Save Medicine'} className="flex-1" onPress={save} />
+          <TouchableOpacity
+            className={`flex-1 p-4 rounded-lg flex-row items-center justify-center space-x-2 ${entryMethod === "barcode" ? "bg-[#139D92]" : "bg-white border border-gray-300"}`}
+            onPress={() => {
+              setEntryMethod("barcode");
+              setShowScanner(true);
+              setScanned(false); // Reset scanned state each time scanner opens
+            }}
+          >
+            <Ionicons name="barcode-outline" size={20} color={entryMethod === "barcode" ? "white" : "#4B5563"} />
+            <Text className={`font-semibold ${entryMethod === "barcode" ? "text-white" : "text-gray-700"}`}>Scan Barcode</Text>
+          </TouchableOpacity>
         </View>
-      </ScrollView>
-    </View>
+      </View>
+
+      {showScanner && (
+        <View className="h-96 bg-black mx-4 my-4 rounded-lg overflow-hidden">
+          <CameraView
+            onBarcodeScanned={scanned ? undefined : handleBarcodeScanned}
+            barcodeScannerSettings={{
+              barcodeTypes: ["ean13", "ean8", "upc_a", "upc_e", "code128"],
+            }}
+            style={StyleSheet.absoluteFillObject}
+          />
+           <View className="absolute top-0 left-0 right-0 bottom-0 items-center justify-center pointer-events-none">
+              <Text className="text-white text-center -mt-32 font-semibold bg-black/50 px-4 py-2 rounded-lg">Point camera at a barcode</Text>
+              <View className="w-64 h-32 border-4 border-white rounded-lg opacity-75"/>
+           </View>
+          <TouchableOpacity
+            className="absolute top-4 right-4 bg-white/70 p-2 rounded-full"
+            onPress={() => setShowScanner(false)}
+          >
+            <Ionicons name="close" size={24} color="black" />
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Your form UI (TextInputs, Pickers, etc.) */}
+      <View className="p-4">
+        <View className="mb-4">
+          <Text className="text-sm font-semibold mb-1 text-gray-700">Medicine Name *</Text>
+          <TextInput
+              className="border border-gray-300 rounded-lg p-3 bg-white"
+              placeholder="Enter medicine name"
+              value={formData.medicineName}
+              onChangeText={(text) => setFormData((p) => ({ ...p, medicineName: text }))}
+          />
+        </View>
+        
+        {/* ... Paste the rest of your form fields here (Dosage, Price, Stock, etc.) ... */}
+        
+        <TouchableOpacity 
+            className={`p-4 rounded-lg ${loading ? "bg-gray-400" : "bg-[#139D92]"} mb-6 mt-6`} 
+            onPress={handleSubmit} 
+            disabled={loading}
+        >
+          {loading ? <ActivityIndicator color="white" /> : <Text className="text-white text-center font-bold text-lg">Add to Inventory</Text>}
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
   );
-}
+};
+
+export default AddMedicineScreen;
+

@@ -1,6 +1,14 @@
 import React from 'react';
-import { View, Text, ScrollView, ActivityIndicator } from 'react-native';
-import { router } from 'expo-router';
+import {
+  View,
+  Text,
+  ScrollView,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
+} from 'react-native';
 
 import Button from '@/modules/pharmacy/components/ui/Button';
 import ProgressIndicator from './components/registration/ProgressIndicator';
@@ -23,14 +31,16 @@ export default function PharmacyRegisterScreen() {
     toggleService,
     handleNext,
     handlePrevious,
-    setStep,
   } = usePharmacyForm();
 
   const { handleSubmit, submitting } = usePharmacyRegistration(formData);
 
+  // If you keep the custom green header, nudge the view a bit more on iOS
+  const keyboardOffset = Platform.OS === 'ios' ? 60 : 0;
+
   return (
     <View className="flex-1 bg-[#E6F5F3]">
-      {/* Header */}
+      {/* Custom header (keep/remove as you like) */}
       <View className="bg-[#139D92] pt-12 pb-6 px-4">
         <Text className="text-2xl font-bold text-white">Register Your Pharmacy</Text>
         <Text className="text-white/80 mt-1">Complete all steps to get started</Text>
@@ -38,77 +48,72 @@ export default function PharmacyRegisterScreen() {
 
       <ProgressIndicator currentStep={step} totalSteps={4} />
 
-      <ScrollView className="flex-1" contentContainerClassName="px-4 pb-8">
-        {/* Step 1: Basic Information */}
-        {step === 1 && (
-          <Step1BasicInfo 
-            formData={formData} 
-            updateField={updateField} 
-          />
-        )}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={keyboardOffset}
+      >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+          <ScrollView
+            className="flex-1"
+            contentContainerClassName="px-4 pb-8"
+            keyboardShouldPersistTaps="handled"
+          >
+            {step === 1 && (
+              <Step1BasicInfo formData={formData} updateField={updateField} />
+            )}
+            {step === 2 && (
+              <Step2Address formData={formData} updateAddress={updateAddress} />
+            )}
+            {step === 3 && (
+              <Step3Hours
+                formData={formData}
+                updateField={updateField}
+                updateOpeningHour={updateOpeningHour}
+              />
+            )}
+            {step === 4 && (
+              <Step4Services
+                formData={formData}
+                updateField={updateField}
+                toggleService={toggleService}
+              />
+            )}
 
-        {/* Step 2: Address & Location */}
-        {step === 2 && (
-          <Step2Address 
-            formData={formData} 
-            updateAddress={updateAddress} 
-          />
-        )}
+            {/* Navigation Buttons */}
+            <View className="flex-row gap-3 mt-6">
+              {step > 1 && (
+                <Button
+                  title="Previous"
+                  variant="outline"
+                  onPress={handlePrevious}
+                  className="flex-1"
+                  disabled={loading || submitting}
+                />
+              )}
+              {step < 4 ? (
+                <Button title="Next" onPress={handleNext} className="flex-1" />
+              ) : (
+                <Button
+                  title={submitting ? 'Registering...' : 'Complete Registration'}
+                  onPress={handleSubmit}
+                  disabled={submitting}
+                  className="flex-1"
+                />
+              )}
+            </View>
 
-        {/* Step 3: Operating Hours */}
-        {step === 3 && (
-          <Step3Hours 
-            formData={formData} 
-            updateField={updateField}
-            updateOpeningHour={updateOpeningHour}
-          />
-        )}
-
-        {/* Step 4: Services */}
-        {step === 4 && (
-          <Step4Services 
-            formData={formData} 
-            updateField={updateField}
-            toggleService={toggleService}
-          />
-        )}
-
-        {/* Navigation Buttons */}
-        <View className="flex-row gap-3 mt-6">
-          {step > 1 && (
-            <Button
-              title="Previous"
-              variant="outline"
-              onPress={handlePrevious}
-              className="flex-1"
-              disabled={loading || submitting}
-            />
-          )}
-          {step < 4 ? (
-            <Button
-              title="Next"
-              onPress={handleNext}
-              className="flex-1"
-            />
-          ) : (
-            <Button
-              title={submitting ? 'Registering...' : 'Complete Registration'}
-              onPress={handleSubmit}
-              disabled={submitting}
-              className="flex-1"
-            />
-          )}
-        </View>
-
-        {submitting && (
-          <View className="mt-4">
-            <ActivityIndicator size="large" color="#139D92" />
-            <Text className="text-center text-gray-600 mt-2">
-              Uploading documents and registering pharmacy...
-            </Text>
-          </View>
-        )}
-      </ScrollView>
+            {submitting && (
+              <View className="mt-4">
+                <ActivityIndicator size="large" color="#139D92" />
+                <Text className="text-center text-gray-600 mt-2">
+                  Uploading documents and registering pharmacy...
+                </Text>
+              </View>
+            )}
+          </ScrollView>
+        </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
     </View>
   );
 }

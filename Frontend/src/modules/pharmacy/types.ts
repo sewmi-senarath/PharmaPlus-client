@@ -86,3 +86,39 @@ export type PharmacyFormData = {
   deliveryRadiusKm: number;
   registrationDocument: DocumentFile;
 };
+
+export type PharmacyProfile = {
+  pharmacyName: string;
+  pharmacyEmail: string;
+  pharmacyPhone: string;
+  address: string;
+  city?: string;
+  district?: string;
+  postalCode?: string;
+  licenseNumber?: string;
+};
+
+export type NotificationSettings = {
+  lowStock: boolean;
+  expiry: boolean;
+  newOrders: boolean;
+  deliveryUpdates: boolean;
+};
+
+export type Notification = {
+  id: string;
+  title: string;
+  message: string;
+  createdAt: string;
+  read: boolean;
+  type: 'low_stock' | 'expiry_alert' | 'new_order' | 'delivery_update';
+  metadata?: any;
+};
+
+export type UserPreferences = {
+  language: string;
+  languageCode: string;
+  largeFontMode: boolean;
+  voiceCommands: boolean;
+  theme?: 'light' | 'dark';
+};

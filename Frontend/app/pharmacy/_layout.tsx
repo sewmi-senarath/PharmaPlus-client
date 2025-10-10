@@ -4,10 +4,15 @@ import { Stack } from 'expo-router';
 
 export default function PharmacyStackLayout() {
   return (
-    <Stack screenOptions={{ headerShown: false }}>
+    <Stack
+      screenOptions={{
+        headerShown: false, // hides the white header
+      }}
+    >
       {/* Registration screen - shown first for new pharmacies */}
       <Stack.Screen name="pharmacy_register" options={{ presentation: 'card' }} />
-      {/* The tab navigator */}
+
+      {/* Tab navigator (Home, Inventory, Orders, etc.) */}
       <Stack.Screen name="(tabs)" />
 
       {/* Non-tab screens pushed on top of the tabs */}
