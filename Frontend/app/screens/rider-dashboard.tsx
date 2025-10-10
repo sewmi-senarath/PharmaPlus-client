@@ -1046,7 +1046,7 @@ export default function RiderDashboard() {
 
   const handleViewOrderDetails = (orderId: string) => {
     router.push({
-      pathname: '/screens/order-details',
+      pathname: '/home/order-details',
       params: { orderId }
     });
   };
