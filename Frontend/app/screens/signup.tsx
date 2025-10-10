@@ -42,12 +42,21 @@ const SignUpScreen = () => {
     }
 
     // Prepare data based on role
-    const userData = {
+    const userData: {
+      name: string;
+      email: string;
+      phone: string;
+      password: string;
+      role: string | undefined;
+      address?: string;
+      pharmacyLicense?: string;
+      vehicleNumber?: string;
+    } = {
       name: fullName,
       email,
       phone,
       password,
-      role: role?.toLowerCase(),
+      role: typeof role === 'string' ? role.toLowerCase() : Array.isArray(role) ? role[0]?.toLowerCase() : undefined,
     };
 
     // Add role-specific fields
