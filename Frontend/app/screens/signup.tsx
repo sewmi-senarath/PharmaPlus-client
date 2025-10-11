@@ -3,7 +3,6 @@ import { View, Text, TextInput, TouchableOpacity, SafeAreaView, ScrollView, Aler
 import AntDesign from 'react-native-vector-icons/AntDesign'; 
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { authService } from '../../config/authService';
-import api from '../../config/api';
 
 const SignUpScreen = () => {
   const router = useRouter();
@@ -15,8 +14,7 @@ const SignUpScreen = () => {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [preferredLanguage, setPreferredLanguage] = useState('en');
-  const [isLoading, setIsLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   // Role-specific fields
   const [address, setAddress] = useState('');
@@ -50,13 +48,11 @@ const SignUpScreen = () => {
   };
 
   const handleSignUp = async () => {
-
     // Validate passwords match
     if (password !== confirmPassword) {
       Alert.alert('Error', 'Passwords do not match!');
       return;
     }
-
 
     // Validate required fields
     if (!fullName || !email || !phone || !password) {
@@ -105,58 +101,6 @@ const SignUpScreen = () => {
       );
     } finally {
       setLoading(false);
-      preferred_language: preferredLanguage,
-    };
-
-    console.log('Signing up with:', userData);
-    
-    try {
-      setIsLoading(true);
-      
-      // Backend route: router.post("/register", registerUserController);
-      // Mounted at: app.use('/api/users', userRouter)
-      // API baseURL already includes /api, so we just need /users/register
-      const response = await api.post('/users/register', userData);
-      
-      const data = response.data;
-      
-      console.log('✅ Signup response:', data);
-      
-      if (data.success) {
-        console.log('🎉 Signup successful for role:', role);
-        
-        // Clear loading state before showing alert
-        setIsLoading(false);
-        
-        // Show success message and redirect
-        Alert.alert(
-          'Registration Successful! ✅',
-          'Your account has been created. Please login to continue.',
-          [
-            {
-              text: 'Go to Login',
-              onPress: () => {
-                console.log('🔄 Redirecting to login with role:', role);
-                router.replace({
-                  pathname: '/screens/login',
-                  params: { role: role }
-                });
-              }
-            }
-          ],
-          { cancelable: false }
-        );
-      } else {
-        Alert.alert('Error', data.message || 'Registration failed. Please try again.');
-      }
-    } catch (error: any) {
-      console.error('❌ Registration error:', error);
-      console.error('Error response:', error.response?.data);
-      
-      const errorMessage = error.response?.data?.message || error.message || 'Network error. Please check your connection and try again.';
-      Alert.alert('Error', errorMessage);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -229,37 +173,6 @@ const SignUpScreen = () => {
                 value={phone}
                 onChangeText={setPhone}
               />
-            </View>
-
-            {/* Preferred Language */}
-            <View className="mb-4">
-              <Text className="text-sm font-medium text-gray-700 mb-1">Preferred Language</Text>
-              <View className="flex-row gap-2">
-                <TouchableOpacity
-                  className={`flex-1 p-3 rounded-lg border ${preferredLanguage === 'en' ? 'border-[#41A67E] bg-[#41A67E]/10' : 'border-gray-300'}`}
-                  onPress={() => setPreferredLanguage('en')}
-                >
-                  <Text className={`text-center ${preferredLanguage === 'en' ? 'text-[#41A67E] font-semibold' : 'text-gray-700'}`}>
-                    English
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  className={`flex-1 p-3 rounded-lg border ${preferredLanguage === 'si' ? 'border-[#41A67E] bg-[#41A67E]/10' : 'border-gray-300'}`}
-                  onPress={() => setPreferredLanguage('si')}
-                >
-                  <Text className={`text-center ${preferredLanguage === 'si' ? 'text-[#41A67E] font-semibold' : 'text-gray-700'}`}>
-                    Sinhala
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  className={`flex-1 p-3 rounded-lg border ${preferredLanguage === 'ta' ? 'border-[#41A67E] bg-[#41A67E]/10' : 'border-gray-300'}`}
-                  onPress={() => setPreferredLanguage('ta')}
-                >
-                  <Text className={`text-center ${preferredLanguage === 'ta' ? 'text-[#41A67E] font-semibold' : 'text-gray-700'}`}>
-                    Tamil
-                  </Text>
-                </TouchableOpacity>
-              </View>
             </View>
 
             {/* Address - for Customer, Pharmacist, Rider */}
