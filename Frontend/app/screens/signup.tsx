@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, SafeAreaView, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, SafeAreaView, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import AntDesign from 'react-native-vector-icons/AntDesign'; 
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import api from '../../config/api';
 
 const SignUpScreen = () => {
   const router = useRouter();
@@ -13,6 +14,8 @@ const SignUpScreen = () => {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [preferredLanguage, setPreferredLanguage] = useState('en');
+  const [isLoading, setIsLoading] = useState(false);
 
   // Role-specific fields
   const [address, setAddress] = useState('');
@@ -45,41 +48,90 @@ const SignUpScreen = () => {
     return roleMap[frontendRole] || frontendRole.toLowerCase();
   };
 
-  const handleSignUp = () => {
-    // Validate passwords match
-    if (password !== confirmPassword) {
-      alert('Passwords do not match!');
+  const handleSignUp = async () => {
+    // Validate all required fields
+    if (!fullName || !email || !phone || !password) {
+      Alert.alert('Error', 'Please fill in all required fields');
       return;
     }
 
-    // Prepare data based on role
-    const userData: any = {
+    // Validate passwords match
+    if (password !== confirmPassword) {
+      Alert.alert('Error', 'Passwords do not match!');
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      Alert.alert('Error', 'Please enter a valid email address');
+      return;
+    }
+
+    // Prepare data for backend (only fields backend expects)
+    const userData = {
       name: fullName,
       email,
       phone,
       password,
       role: getRoleForBackend(role as string),
+      preferred_language: preferredLanguage,
     };
 
-    // Add role-specific fields
-    if (role === 'Customer' || role === 'Pharmacist' || role === 'Rider') {
-      userData.address = address;
-    }
-    if (role === 'Pharmacist') {
-      userData.pharmacyLicense = pharmacyLicense;
-    }
-    if (role === 'Rider') {
-      userData.vehicleNumber = vehicleNumber;
-    }
-
     console.log('Signing up with:', userData);
-    // TODO: Add your API call here to register the user
     
-    // Navigate to login after successful signup
-    router.push({
-      pathname: '/screens/login',
-      params: { role: role }
-    });
+    try {
+      setIsLoading(true);
+      
+      // Backend route: router.post("/register", registerUserController);
+      // Mounted at: app.use('/api/users', userRouter)
+      // API baseURL already includes /api, so we just need /users/register
+      const response = await api.post('/users/register', userData);
+      
+      const data = response.data;
+      
+      console.log('✅ Signup response:', data);
+      
+      if (data.success) {
+        // Show success message and redirect
+        Alert.alert(
+          'Success',
+          'Registration successful! Redirecting to login...',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                console.log('🔄 Redirecting to login with role:', role);
+                router.push({
+                  pathname: '/screens/login',
+                  params: { role: role }
+                });
+              }
+            }
+          ],
+          { cancelable: false }
+        );
+        
+        // Fallback: redirect after 3 seconds even if user doesn't click OK
+        setTimeout(() => {
+          console.log('⏰ Auto-redirecting to login...');
+          router.push({
+            pathname: '/screens/login',
+            params: { role: role }
+          });
+        }, 3000);
+      } else {
+        Alert.alert('Error', data.message || 'Registration failed. Please try again.');
+      }
+    } catch (error: any) {
+      console.error('❌ Registration error:', error);
+      console.error('Error response:', error.response?.data);
+      
+      const errorMessage = error.response?.data?.message || error.message || 'Network error. Please check your connection and try again.';
+      Alert.alert('Error', errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleGoBack = () => {
@@ -153,6 +205,37 @@ const SignUpScreen = () => {
               />
             </View>
 
+            {/* Preferred Language */}
+            <View className="mb-4">
+              <Text className="text-sm font-medium text-gray-700 mb-1">Preferred Language</Text>
+              <View className="flex-row gap-2">
+                <TouchableOpacity
+                  className={`flex-1 p-3 rounded-lg border ${preferredLanguage === 'en' ? 'border-[#41A67E] bg-[#41A67E]/10' : 'border-gray-300'}`}
+                  onPress={() => setPreferredLanguage('en')}
+                >
+                  <Text className={`text-center ${preferredLanguage === 'en' ? 'text-[#41A67E] font-semibold' : 'text-gray-700'}`}>
+                    English
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  className={`flex-1 p-3 rounded-lg border ${preferredLanguage === 'si' ? 'border-[#41A67E] bg-[#41A67E]/10' : 'border-gray-300'}`}
+                  onPress={() => setPreferredLanguage('si')}
+                >
+                  <Text className={`text-center ${preferredLanguage === 'si' ? 'text-[#41A67E] font-semibold' : 'text-gray-700'}`}>
+                    Sinhala
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  className={`flex-1 p-3 rounded-lg border ${preferredLanguage === 'ta' ? 'border-[#41A67E] bg-[#41A67E]/10' : 'border-gray-300'}`}
+                  onPress={() => setPreferredLanguage('ta')}
+                >
+                  <Text className={`text-center ${preferredLanguage === 'ta' ? 'text-[#41A67E] font-semibold' : 'text-gray-700'}`}>
+                    Tamil
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
             {/* Address - for Customer, Pharmacist, Rider */}
             {(role === 'Customer' || role === 'Pharmacist' || role === 'Rider') && (
               <View className="mb-4">
@@ -222,12 +305,22 @@ const SignUpScreen = () => {
             {/* Sign Up Button */}
             <TouchableOpacity
               className="w-full p-4 rounded-lg shadow-md"
-              style={{ backgroundColor: '#41A67E' }}
+              style={{ backgroundColor: isLoading ? '#9CA3AF' : '#41A67E' }}
               onPress={handleSignUp}
+              disabled={isLoading}
             >
-              <Text className="text-white text-center text-lg font-semibold">
-                Sign Up
-              </Text>
+              {isLoading ? (
+                <View className="flex-row justify-center items-center">
+                  <ActivityIndicator color="#fff" />
+                  <Text className="text-white text-center text-lg font-semibold ml-2">
+                    Creating Account...
+                  </Text>
+                </View>
+              ) : (
+                <Text className="text-white text-center text-lg font-semibold">
+                  Sign Up
+                </Text>
+              )}
             </TouchableOpacity>
 
             {/* Already have account - Link to Login */}
