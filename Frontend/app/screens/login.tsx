@@ -108,10 +108,7 @@ const LoginScreen = () => {
           });
           break;
         case 'Pharmacist':
-          router.replace({
-            pathname: '/home' as any,
-            params: { userRole: 'pharmacist' }
-          });
+          router.replace('/pharmacy' as any);
           break;
         case 'Rider':
           router.replace('/screens/rider-dashboard' as any);
