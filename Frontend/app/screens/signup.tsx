@@ -93,16 +93,21 @@ const SignUpScreen = () => {
       console.log('✅ Signup response:', data);
       
       if (data.success) {
+        console.log('🎉 Signup successful for role:', role);
+        
+        // Clear loading state before showing alert
+        setIsLoading(false);
+        
         // Show success message and redirect
         Alert.alert(
-          'Success',
-          'Registration successful! Redirecting to login...',
+          'Registration Successful! ✅',
+          'Your account has been created. Please login to continue.',
           [
             {
-              text: 'OK',
+              text: 'Go to Login',
               onPress: () => {
                 console.log('🔄 Redirecting to login with role:', role);
-                router.push({
+                router.replace({
                   pathname: '/screens/login',
                   params: { role: role }
                 });
@@ -111,15 +116,6 @@ const SignUpScreen = () => {
           ],
           { cancelable: false }
         );
-        
-        // Fallback: redirect after 3 seconds even if user doesn't click OK
-        setTimeout(() => {
-          console.log('⏰ Auto-redirecting to login...');
-          router.push({
-            pathname: '/screens/login',
-            params: { role: role }
-          });
-        }, 3000);
       } else {
         Alert.alert('Error', data.message || 'Registration failed. Please try again.');
       }

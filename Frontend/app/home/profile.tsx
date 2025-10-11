@@ -128,32 +128,49 @@ export default function ProfileScreen() {
   };
 
   const handleLogout = async () => {
-    try {
-      setLoading(true);
-      
-      // Call backend logout API
-      try {
-        await userService.logout();
-        console.log('✅ Backend logout successful');
-      } catch (apiError) {
-        console.warn('⚠️ Backend logout failed, continuing with local logout:', apiError);
-      }
-      
-      // Clear all stored authentication data
-      await AsyncStorage.removeItem('authToken');
-      await AsyncStorage.removeItem('refreshToken');
-      await AsyncStorage.removeItem('userRole');
-      
-      console.log('✅ User logged out successfully');
-      
-      // Navigate to login screen
-      router.replace('/screens/login');
-    } catch (error) {
-      console.error('❌ Logout error:', error);
-      Alert.alert('Error', 'Failed to logout. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setLoading(true);
+              
+              // Call backend logout API (optional - continues even if fails)
+              try {
+                await userService.logout();
+                console.log('✅ Backend logout successful');
+              } catch (apiError) {
+                console.warn('⚠️ Backend logout failed, continuing with local logout:', apiError);
+              }
+              
+              // Clear all stored authentication data
+              await AsyncStorage.multiRemove([
+                'authToken',
+                'refreshToken',
+                'userRole',
+                'userId',
+                'pharmacyId'
+              ]);
+              
+              console.log('✅ User logged out successfully');
+              
+              // Navigate to login screen
+              router.replace('/screens/login');
+            } catch (error) {
+              console.error('❌ Logout error:', error);
+              Alert.alert('Error', 'Failed to logout. Please try again.');
+            } finally {
+              setLoading(false);
+            }
+          }
+        }
+      ]
+    );
   };
 
   return (
@@ -315,20 +332,7 @@ export default function ProfileScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity 
-                onPress={() => {
-                  Alert.alert(
-                    'Logout',
-                    'Are you sure you want to logout?',
-                    [
-                      { text: 'Cancel', style: 'cancel' },
-                      { 
-                        text: 'Logout', 
-                        style: 'destructive', 
-                        onPress: handleLogout 
-                      }
-                    ]
-                  );
-                }}
+                onPress={handleLogout}
                 className="bg-red-50 rounded-xl p-4 flex-row items-center justify-center border border-red-200"
               >
                 <Ionicons name="log-out" size={20} color="#EF4444" />

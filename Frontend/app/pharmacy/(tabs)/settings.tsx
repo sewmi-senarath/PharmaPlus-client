@@ -200,7 +200,7 @@ export default function SettingsScreen() {
   }
 
 
-  //------------------------------------------------temporary logout -------------------------------------------------------------//
+  //------------------------------------------------Logout Function -------------------------------------------------------------//
 
   const handleSimpleLogout = async () => {
     Alert.alert(
@@ -213,26 +213,24 @@ export default function SettingsScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              // Clear authentication data only
+              // Clear all authentication data
               await AsyncStorage.multiRemove([
                 'pharmacyId',
                 'userId',
+                'authToken',
                 'accessToken',
                 'refreshToken',
+                'userRole',
               ]);
 
-              Alert.alert('Success', 'Logged out successfully!', [
-                {
-                  text: 'OK',
-                  onPress: () => {
-                    // Navigate to your registration or login screen
-                    // Adjust the path based on your app structure
-                    router.replace('/pharmacy/pharmacy_register');
-                  }
-                }
-              ]);
+              console.log('✅ Pharmacist logged out successfully');
+              
+              // Navigate to login screen (not registration)
+              router.replace('/screens/login');
+              
+              Alert.alert('Success', 'Logged out successfully!');
             } catch (error) {
-              console.error('Logout error:', error);
+              console.error('❌ Logout error:', error);
               Alert.alert('Error', 'Failed to logout. Please try again.');
             }
           }

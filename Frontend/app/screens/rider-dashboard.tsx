@@ -1055,13 +1055,42 @@ export default function RiderDashboard() {
     router.push('/screens/profile');
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     Alert.alert(
       'Logout',
       'Are you sure you want to logout?',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Logout', style: 'destructive', onPress: () => router.replace('/') }
+        { 
+          text: 'Logout', 
+          style: 'destructive', 
+          onPress: async () => {
+            try {
+              // Import AsyncStorage if not already imported
+              const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+              
+              // Clear all authentication data
+              await AsyncStorage.multiRemove([
+                'authToken',
+                'refreshToken',
+                'userRole',
+                'userId',
+                'pharmacyId',
+                'riderId'
+              ]);
+
+              console.log('✅ Rider logged out successfully');
+              
+              // Navigate to login screen
+              router.replace('/screens/login');
+              
+              Alert.alert('Success', 'Logged out successfully!');
+            } catch (error) {
+              console.error('❌ Logout error:', error);
+              Alert.alert('Error', 'Failed to logout. Please try again.');
+            }
+          }
+        }
       ]
     );
   };
