@@ -103,7 +103,17 @@ export default function Login() {
 
         {/* Login button */}
         <View className="px-5 mt-5">
-          <Pressable className="bg-teal-600 rounded-xl py-4 items-center" onPress={() => router.replace("/screens/rider-dashboard")}> 
+          <Pressable
+            className="bg-teal-600 rounded-xl py-4 items-center"
+            onPress={() => {
+              const route =
+                role === "rider" ? "/usermain_page/deliveryperson" :
+                role === "customer" ? "/usermain_page/customer" :
+                role === "pharmacist" ? "/usermain_page/pharmacist" :
+                "/usermain_page/admin";
+              router.replace(route);
+            }}
+          > 
             <Text className="text-white font-semibold">Login</Text>
           </Pressable>
         </View>

@@ -4,7 +4,7 @@ export const authService = {
   // Login
   login: async (email: string, password: string, role: string) => {
     try {
-      console.log('�� Sending to backend:', { email, password: '***', role });
+      console.log('📤 Sending to backend:', { email, password: '***', role });
       
       const response = await api.post('/users/login', {
         email,

@@ -7,7 +7,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 const translations = {
   en: {
     appName: 'Pharma Plus',
-    welcome: 'Welcome, John!',
+    welcome: 'Welcome',
     healthStatus: 'Health Status',
     selectLanguage: 'Select Language',
     emergencyServices: 'Emergency Services',
@@ -37,7 +37,7 @@ const translations = {
   },
   ta: {
     appName: 'பார்மா பிளஸ்',
-    welcome: 'வரவேற்கிறோம், ஜான்!',
+    welcome: 'வரவேற்கிறோம்',
     healthStatus: 'சுகாதார நிலை',
     selectLanguage: 'மொழியைத் தேர்ந்தெடுக்கவும்',
     emergencyServices: 'அவசர சேவைகள்',
@@ -67,7 +67,7 @@ const translations = {
   },
   si: {
     appName: 'ෆාර්මා ප්ලස්',
-    welcome: 'ආයුබෝවන්, ජෝන්!',
+    welcome: 'ආයුබෝවන්',
     healthStatus: 'සෞඛ්‍ය තත්ත්වය',
     selectLanguage: 'භාෂාව තෝරන්න',
     emergencyServices: 'හදිසි සේවා',

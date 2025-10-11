@@ -1,65 +1,159 @@
-import { View, Text, TouchableOpacity, TextInput, ScrollView, Image, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, ScrollView, Alert, Modal, ActivityIndicator } from 'react-native';
 import { useRouter, Stack, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { userService } from '../../services/userService';
 
 export default function ProfileScreen() {
   const router = useRouter();
   const { userRole } = useLocalSearchParams();
   const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
   
-  // Different profile data based on role
-  const getProfileData = () => {
-    if (userRole === 'Customer') {
-      return {
-        name: 'John Doe',
-        email: 'john.doe@example.com',
-        phone: '+94 71 234 5678',
-        address: '123 Main St, Colombo',
-        allergies: 'Penicillin, Shellfish',
-        bloodType: 'O+',
-        joinDate: 'Jan 2024', // Add this
-      };
-    } else if (userRole === 'Pharmacist') {
-      return {
-        name: 'Dr. Silva',
-        email: 'silva@pharmacy.com',
-        phone: '+94 77 888 9999',
-        pharmacyLicense: 'PL-123456',
-        pharmacyName: 'City Pharmacy',
-        yearsExperience: 10,
-        joinDate: 'Mar 2020', // Add this
-      };
-    } else if (userRole === 'Rider') {
-      return {
-        name: 'Kasun Perera',
-        email: 'kasun.perera@example.com',
-        phone: '+94 77 123 4567',
-        vehicleNumber: 'CAB-1234',
-        vehicleType: 'Motorcycle',
-        licenseNumber: 'B1234567',
-        rating: 4.8,
-        totalDeliveries: 1247,
-        joinDate: 'Jan 2023', // Already exists, keep it
-      };
-    } else { // Admin
-      return {
-        name: 'Admin User',
-        email: 'admin@pharmaplus.com',
-        phone: '+94 11 234 5678',
-        role: 'System Administrator',
-        department: 'IT Management',
-        joinDate: 'Dec 2019', // Add this
-      };
+  // Profile state
+  const [profile, setProfile] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    avatar: '',
+    preferred_language: 'en',
+    role: userRole || '',
+    joinDate: 'Loading...',
+  });
+
+  // Password change state
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+
+  // Load user profile from backend
+  useEffect(() => {
+    loadUserProfile();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const loadUserProfile = async () => {
+    try {
+      setRefreshing(true);
+      const userData = await userService.getUserDetails();
+      console.log('📥 User data loaded:', userData);
+      
+      setProfile({
+        name: userData.name || '',
+        email: userData.email || '',
+        phone: userData.phone || '',
+        avatar: userData.avatar || '',
+        preferred_language: userData.preferred_language || 'en',
+        role: userData.role || userRole || '',
+        joinDate: userData.createdAt ? new Date(userData.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'N/A',
+      });
+    } catch (error) {
+      console.error('❌ Failed to load profile:', error);
+      Alert.alert('Error', 'Failed to load profile data');
+    } finally {
+      setRefreshing(false);
     }
   };
 
-  const [profile, setProfile] = useState(getProfileData());
+  const handleSave = async () => {
+    try {
+      setLoading(true);
+      
+      // Prepare update data
+      const updateData = {
+        name: profile.name,
+        phone: profile.phone,
+        avatar: profile.avatar,
+        preferred_language: profile.preferred_language,
+      };
 
-  const handleSave = () => {
-    setIsEditing(false);
-    Alert.alert('Success', 'Profile updated successfully!');
+      await userService.updateProfile(updateData);
+      console.log('✅ Profile updated successfully');
+      
+      setIsEditing(false);
+      Alert.alert('Success', 'Profile updated successfully!');
+      
+      // Reload profile to get latest data
+      await loadUserProfile();
+    } catch (error: any) {
+      console.error('❌ Failed to update profile:', error);
+      Alert.alert('Error', error.toString() || 'Failed to update profile');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      Alert.alert('Error', 'Please fill in all password fields');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      Alert.alert('Error', 'New passwords do not match');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      Alert.alert('Error', 'Password must be at least 6 characters');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      await userService.updatePassword({
+        currentPassword,
+        newPassword,
+      });
+
+      console.log('✅ Password updated successfully');
+      
+      setShowPasswordModal(false);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      
+      Alert.alert('Success', 'Password updated successfully!');
+    } catch (error: any) {
+      console.error('❌ Failed to update password:', error);
+      Alert.alert('Error', error.toString() || 'Failed to update password');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      setLoading(true);
+      
+      // Call backend logout API
+      try {
+        await userService.logout();
+        console.log('✅ Backend logout successful');
+      } catch (apiError) {
+        console.warn('⚠️ Backend logout failed, continuing with local logout:', apiError);
+      }
+      
+      // Clear all stored authentication data
+      await AsyncStorage.removeItem('authToken');
+      await AsyncStorage.removeItem('refreshToken');
+      await AsyncStorage.removeItem('userRole');
+      
+      console.log('✅ User logged out successfully');
+      
+      // Navigate to login screen
+      router.replace('/screens/login');
+    } catch (error) {
+      console.error('❌ Logout error:', error);
+      Alert.alert('Error', 'Failed to logout. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -108,16 +202,23 @@ export default function ProfileScreen() {
           <View className="px-4 mt-6">
             <TouchableOpacity
               onPress={() => isEditing ? handleSave() : setIsEditing(true)}
-              className="bg-teal-600 py-3 rounded-xl flex-row items-center justify-center"
+              disabled={loading || refreshing}
+              className={`bg-teal-600 py-3 rounded-xl flex-row items-center justify-center ${(loading || refreshing) ? 'opacity-50' : ''}`}
             >
-              <Ionicons 
-                name={isEditing ? 'checkmark' : 'pencil'} 
-                size={20} 
-                color="white" 
-              />
-              <Text className="text-white font-semibold ml-2 text-base">
-                {isEditing ? 'Save Changes' : 'Edit Profile'}
-              </Text>
+              {loading ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <>
+                  <Ionicons 
+                    name={isEditing ? 'checkmark' : 'pencil'} 
+                    size={20} 
+                    color="white" 
+                  />
+                  <Text className="text-white font-semibold ml-2 text-base">
+                    {isEditing ? 'Save Changes' : 'Edit Profile'}
+                  </Text>
+                </>
+              )}
             </TouchableOpacity>
           </View>
 
@@ -173,39 +274,6 @@ export default function ProfileScreen() {
               )}
             </View>
 
-            {/* Vehicle Information - Only show for Rider */}
-            {userRole === 'Rider' && profile.vehicleNumber && (
-              <>
-                <Text className="text-lg font-bold text-gray-900 mt-6 mb-4">
-                  Vehicle Information
-                </Text>
-
-                <View className="bg-white rounded-xl p-4 mb-3">
-                  <Text className="text-xs text-gray-500 mb-2">Vehicle Number</Text>
-                  {isEditing ? (
-                    <TextInput
-                      value={profile.vehicleNumber}
-                      onChangeText={(text) => setProfile({...profile, vehicleNumber: text})}
-                      className="text-gray-900 text-base font-semibold"
-                    />
-                  ) : (
-                    <Text className="text-gray-900 text-base font-semibold">
-                      {profile.vehicleNumber}
-                    </Text>
-                  )}
-                </View>
-
-                <View className="bg-white rounded-xl p-4 mb-3">
-                  <Text className="text-xs text-gray-500 mb-2">Vehicle Type</Text>
-                  <Text className="text-gray-900 text-base">{profile.vehicleType}</Text>
-                </View>
-
-                <View className="bg-white rounded-xl p-4 mb-3">
-                  <Text className="text-xs text-gray-500 mb-2">License Number</Text>
-                  <Text className="text-gray-900 text-base">{profile.licenseNumber}</Text>
-                </View>
-              </>
-            )}
 
             {/* Action Buttons */}
             <View className="mt-6 mb-6">
@@ -217,7 +285,10 @@ export default function ProfileScreen() {
                 <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
               </TouchableOpacity>
 
-              <TouchableOpacity className="bg-white rounded-xl p-4 mb-3 flex-row items-center border border-gray-200">
+              <TouchableOpacity 
+                onPress={() => setShowPasswordModal(true)}
+                className="bg-white rounded-xl p-4 mb-3 flex-row items-center border border-gray-200"
+              >
                 <Ionicons name="lock-closed" size={24} color="#0d9488" />
                 <Text className="text-gray-900 ml-3 flex-1 font-semibold">
                   Change Password
@@ -253,7 +324,7 @@ export default function ProfileScreen() {
                       { 
                         text: 'Logout', 
                         style: 'destructive', 
-                        onPress: () => router.replace('/') 
+                        onPress: handleLogout 
                       }
                     ]
                   );
@@ -268,6 +339,104 @@ export default function ProfileScreen() {
             </View>
           </View>
         </ScrollView>
+
+        {/* Change Password Modal */}
+        <Modal
+          visible={showPasswordModal}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setShowPasswordModal(false)}
+        >
+          <View className="flex-1 bg-black/50 justify-end">
+            <View className="bg-white rounded-t-3xl p-6 max-h-[80%]">
+              <View className="flex-row justify-between items-center mb-6">
+                <Text className="text-2xl font-bold text-gray-800">
+                  Change Password
+                </Text>
+                <TouchableOpacity onPress={() => setShowPasswordModal(false)}>
+                  <Ionicons name="close" size={28} color="#6B7280" />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView showsVerticalScrollIndicator={false}>
+                {/* Current Password */}
+                <View className="mb-4">
+                  <Text className="text-sm font-semibold text-gray-700 mb-2">
+                    Current Password
+                  </Text>
+                  <TextInput
+                    className="w-full border border-gray-300 p-3 rounded-lg text-gray-800"
+                    placeholder="Enter current password"
+                    secureTextEntry
+                    value={currentPassword}
+                    onChangeText={setCurrentPassword}
+                  />
+                </View>
+
+                {/* New Password */}
+                <View className="mb-4">
+                  <Text className="text-sm font-semibold text-gray-700 mb-2">
+                    New Password
+                  </Text>
+                  <TextInput
+                    className="w-full border border-gray-300 p-3 rounded-lg text-gray-800"
+                    placeholder="Enter new password (min 6 characters)"
+                    secureTextEntry
+                    value={newPassword}
+                    onChangeText={setNewPassword}
+                  />
+                </View>
+
+                {/* Confirm New Password */}
+                <View className="mb-6">
+                  <Text className="text-sm font-semibold text-gray-700 mb-2">
+                    Confirm New Password
+                  </Text>
+                  <TextInput
+                    className="w-full border border-gray-300 p-3 rounded-lg text-gray-800"
+                    placeholder="Re-enter new password"
+                    secureTextEntry
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                  />
+                </View>
+
+                {/* Update Button */}
+                <TouchableOpacity
+                  onPress={handleChangePassword}
+                  disabled={loading}
+                  className={`bg-teal-600 py-4 rounded-xl flex-row items-center justify-center ${loading ? 'opacity-50' : ''}`}
+                >
+                  {loading ? (
+                    <ActivityIndicator size="small" color="white" />
+                  ) : (
+                    <>
+                      <Ionicons name="lock-closed" size={20} color="white" />
+                      <Text className="text-white font-semibold ml-2 text-lg">
+                        Update Password
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+
+                {/* Cancel Button */}
+                <TouchableOpacity
+                  onPress={() => {
+                    setShowPasswordModal(false);
+                    setCurrentPassword('');
+                    setNewPassword('');
+                    setConfirmPassword('');
+                  }}
+                  className="bg-gray-100 py-3 rounded-xl mt-3"
+                >
+                  <Text className="text-gray-700 text-center font-semibold">
+                    Cancel
+                  </Text>
+                </TouchableOpacity>
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
       </SafeAreaView>
     </>
   );
