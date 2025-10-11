@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, SafeAreaView, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import AntDesign from 'react-native-vector-icons/AntDesign'; 
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { authService } from '../../config/authService';
 import api from '../../config/api';
 
 const SignUpScreen = () => {
@@ -42,18 +43,13 @@ const SignUpScreen = () => {
     const roleMap: any = {
       'Customer': 'customer',
       'Pharmacist': 'pharmacist',
-      'Rider': 'driver', // Backend uses "driver" not "rider"
+      'Rider': 'driver',
       'Admin': 'admin',
     };
     return roleMap[frontendRole] || frontendRole.toLowerCase();
   };
 
   const handleSignUp = async () => {
-    // Validate all required fields
-    if (!fullName || !email || !phone || !password) {
-      Alert.alert('Error', 'Please fill in all required fields');
-      return;
-    }
 
     // Validate passwords match
     if (password !== confirmPassword) {
@@ -61,20 +57,54 @@ const SignUpScreen = () => {
       return;
     }
 
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      Alert.alert('Error', 'Please enter a valid email address');
+
+    // Validate required fields
+    if (!fullName || !email || !phone || !password) {
+      Alert.alert('Error', 'Please fill in all required fields');
       return;
     }
 
-    // Prepare data for backend (only fields backend expects)
-    const userData = {
+    // Prepare data based on role - MATCH BACKEND REQUIREMENTS
+    const userData: any = {
       name: fullName,
       email,
       phone,
       password,
       role: getRoleForBackend(role as string),
+      preferred_language: 'en', // Required by backend - default to English
+    };
+
+    // Note: Backend doesn't handle these fields in user registration
+    // They should be saved separately after user is created
+    // For now, we'll just register the basic user info
+
+    setLoading(true);
+    try {
+      console.log('Signing up with:', userData);
+      const response = await authService.signup(userData);
+      
+      console.log('Signup successful:', response);
+      Alert.alert(
+        'Success',
+        'Account created successfully! Please login.',
+        [
+          {
+            text: 'OK',
+            onPress: () => router.push({
+              pathname: '/screens/login',
+              params: { role: role }
+            })
+          }
+        ]
+      );
+    } catch (error: any) {
+      console.error('Signup error:', error);
+      Alert.alert(
+        'Signup Failed',
+        error.message || 'Failed to create account. Please try again.'
+      );
+    } finally {
+      setLoading(false);
       preferred_language: preferredLanguage,
     };
 
@@ -301,17 +331,12 @@ const SignUpScreen = () => {
             {/* Sign Up Button */}
             <TouchableOpacity
               className="w-full p-4 rounded-lg shadow-md"
-              style={{ backgroundColor: isLoading ? '#9CA3AF' : '#41A67E' }}
+              style={{ backgroundColor: loading ? '#9CA3AF' : '#41A67E' }}
               onPress={handleSignUp}
-              disabled={isLoading}
+              disabled={loading}
             >
-              {isLoading ? (
-                <View className="flex-row justify-center items-center">
-                  <ActivityIndicator color="#fff" />
-                  <Text className="text-white text-center text-lg font-semibold ml-2">
-                    Creating Account...
-                  </Text>
-                </View>
+              {loading ? (
+                <ActivityIndicator color="#ffffff" />
               ) : (
                 <Text className="text-white text-center text-lg font-semibold">
                   Sign Up

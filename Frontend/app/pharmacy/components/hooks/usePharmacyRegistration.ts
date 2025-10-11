@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PharmacyFormData } from './usePharmacyForm';
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.1.10:5000:5000/api';
 
 export const usePharmacyRegistration = (formData: PharmacyFormData) => {
   const [submitting, setSubmitting] = useState(false);
@@ -36,6 +36,13 @@ export const usePharmacyRegistration = (formData: PharmacyFormData) => {
   };
 
   const registerPharmacy = async (documentUrl: string) => {
+    // Get user ID from AsyncStorage
+    const userId = await AsyncStorage.getItem('userId');
+    
+    if (!userId) {
+      throw new Error('User ID not found. Please login again.');
+    }
+
     const payload = {
       pharmacyName: formData.pharmacyName,
       pharmacyEmail: formData.pharmacyEmail,
@@ -60,7 +67,11 @@ export const usePharmacyRegistration = (formData: PharmacyFormData) => {
       pharmacyServices: formData.pharmacyServices,
       deliveryRadiusKm: formData.deliveryRadiusKm,
       registrationDocument: documentUrl,
+      createdBy: userId,  // links pharmacy to user
+      updatedBy: userId,
     };
+
+    console.log('Registering pharmacy with payload:', { ...payload, registrationDocument: '...' });
 
     const response = await fetch(`${API_BASE_URL}/pharmacy/add`, {
       method: 'POST',
@@ -87,12 +98,17 @@ export const usePharmacyRegistration = (formData: PharmacyFormData) => {
     setSubmitting(true);
     try {
       // Step 1: Upload document
+      console.log('Step 1: Uploading document...');
       const documentUrl = await uploadDocument();
+      console.log('Document uploaded:', documentUrl);
 
       // Step 2: Register pharmacy
+      console.log('Step 2: Registering pharmacy...');
       const result = await registerPharmacy(documentUrl);
+      console.log('Pharmacy registered:', result);
 
       // Step 3: Save to local storage
+      console.log('Step 3: Saving to storage...');
       await saveToStorage(result);
 
       // Step 4: Show success and redirect
