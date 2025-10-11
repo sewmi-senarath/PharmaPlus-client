@@ -313,40 +313,15 @@ export default function HomeScreen() {
           </View>
         </Modal>
 
-        {/* Medical Information - Now translated */}
-        <View className="mx-4 mt-6 bg-yellow-50 p-4 rounded-xl border border-yellow-200">
-          <Text className="text-lg font-bold text-gray-800 mb-3">{t('medicalInfo')}</Text>
-          
-          <View className="mb-3">
-            <Text className="text-sm font-semibold text-gray-700">{t('allergies')}</Text>
-            <Text className="text-gray-600">Penicillin, Shellfish</Text>
-          </View>
-          
-          <View className="mb-3">
-            <Text className="text-sm font-semibold text-gray-700">{t('currentMeds')}</Text>
-            <Text className="text-gray-600">Metformin, Atorvastatin</Text>
-          </View>
-          
-          <View className="mb-3">
-            <Text className="text-sm font-semibold text-gray-700">{t('medicalConditions')}</Text>
-            <Text className="text-gray-600">Type 2 Diabetes, Hypertension</Text>
-          </View>
-          
-          <View className="mb-4">
-            <Text className="text-sm font-semibold text-gray-700">{t('bloodType')}</Text>
-            <Text className="text-gray-600">O+</Text>
-          </View>
-          
-          <TouchableOpacity className="bg-yellow-600 py-3 rounded-lg">
-            <Text className="text-white text-center font-semibold">{t('shareMedicalInfo')}</Text>
-          </TouchableOpacity>
-        </View>
 
         {/* Quick Actions - Now translated */}
         <View className="mx-4 mt-6">
           <Text className="text-lg font-bold text-gray-800 mb-3">{t('quickActions')}</Text>
           <View className="flex-row flex-wrap gap-3">
-            <TouchableOpacity className="bg-white p-6 rounded-xl flex-1 items-center min-w-[45%]">
+            <TouchableOpacity 
+              className="bg-white p-6 rounded-xl flex-1 items-center min-w-[45%]"
+              onPress={() => router.push('/home/order-medicine')}
+            >
               <AntDesign name="plus" size={32} color="#41A67E" />
               <Text className="text-gray-700 font-semibold mt-2">{t('orderMedicine')}</Text>
             </TouchableOpacity>
@@ -356,7 +331,10 @@ export default function HomeScreen() {
               <Text className="text-gray-700 font-semibold mt-2">{t('voiceSearch')}</Text>
             </TouchableOpacity>
             
-            <TouchableOpacity className="bg-white p-6 rounded-xl flex-1 items-center min-w-[45%]">
+            <TouchableOpacity 
+              className="bg-white p-6 rounded-xl flex-1 items-center min-w-[45%]"
+              onPress={() => router.push('/home/medications')}
+            >
               <AntDesign name="link" size={32} color="#41A67E" />
               <Text className="text-gray-700 font-semibold mt-2">{t('medicationReminders')}</Text>
             </TouchableOpacity>
@@ -368,40 +346,6 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Active Orders - Now translated */}
-        <View className="mx-4 mt-6 mb-6">
-          <Text className="text-lg font-bold text-gray-800 mb-3">{t('activeOrders')}</Text>
-          
-          <View className="bg-white p-4 rounded-xl mb-3">
-            <View className="flex-row justify-between items-start mb-2">
-              <Text className="font-bold text-gray-800">Order #ORD001</Text>
-              <View className="bg-green-100 px-3 py-1 rounded-full">
-                <Text className="text-green-700 text-xs font-semibold">{t('outForDelivery')}</Text>
-              </View>
-            </View>
-            <Text className="text-gray-600 text-sm mb-1">Paracetamol 500mg, Vitamin D3</Text>
-            <Text className="text-gray-800 font-semibold mb-1">Rs. 450</Text>
-            <Text className="text-gray-500 text-xs mb-3">{t('estimated')}: 15 mins</Text>
-            <TouchableOpacity className="bg-teal-600 py-2 rounded-lg">
-              <Text className="text-white text-center font-semibold">{t('track')}</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View className="bg-white p-4 rounded-xl">
-            <View className="flex-row justify-between items-start mb-2">
-              <Text className="font-bold text-gray-800">Order #ORD002</Text>
-              <View className="bg-blue-100 px-3 py-1 rounded-full">
-                <Text className="text-blue-700 text-xs font-semibold">{t('processing')}</Text>
-              </View>
-            </View>
-            <Text className="text-gray-600 text-sm mb-1">Blood Pressure Monitor</Text>
-            <Text className="text-gray-800 font-semibold mb-1">Rs. 2,500</Text>
-            <Text className="text-gray-500 text-xs mb-3">{t('estimated')}: 2 hours</Text>
-            <TouchableOpacity className="bg-teal-600 py-2 rounded-lg">
-              <Text className="text-white text-center font-semibold">{t('track')}</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
       </ScrollView>
     </SafeAreaView>
   );
