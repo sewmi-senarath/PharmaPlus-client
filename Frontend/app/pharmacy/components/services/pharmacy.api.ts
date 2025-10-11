@@ -1,5 +1,5 @@
 import { http } from './http';
-import type { Medicine, UpsertMedicine, Order, Availability, PharmacyInfo, PharmacyProfile, NotificationSettings } from '@/modules/pharmacy/types';
+import type { Medicine, UpsertMedicine, Order, Availability, PharmacyInfo, PharmacyProfile, NotificationSettings } from '../../../types/pharmacy-types';
 const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 export const PharmacyAPI = {
