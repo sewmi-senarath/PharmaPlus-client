@@ -5,7 +5,7 @@ export const authService = {
   login: async (email: string, password: string, role: string) => {
     try {
       console.log('🔐 Sending to backend:', { email, password: '***', role });
-      
+   
       const response = await api.post('/users/login', {
         email,
         password,
@@ -50,6 +50,7 @@ export const authService = {
   // Logout
   logout: async () => {
     try {
+      // Backend endpoint: GET /api/users/logout
       const response = await api.get('/users/logout');
       return response.data;
     } catch (error: any) {
