@@ -318,9 +318,10 @@ export default function HomeScreen() {
         <View className="mx-4 mt-6">
           <Text className="text-lg font-bold text-gray-800 mb-3">{t('quickActions')}</Text>
           <View className="flex-row flex-wrap gap-3">
-            <TouchableOpacity 
-              className="bg-white p-6 rounded-xl flex-1 items-center min-w-[45%]"
-              onPress={() => router.push('/home/order-medicine')}
+
+            <TouchableOpacity className="bg-white p-6 rounded-xl flex-1 items-center min-w-[45%]"
+              onPress={() => router.push('/usermain_page/order-medition')}
+
             >
               <AntDesign name="plus" size={32} color="#41A67E" />
               <Text className="text-gray-700 font-semibold mt-2">{t('orderMedicine')}</Text>
