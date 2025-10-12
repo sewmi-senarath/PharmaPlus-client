@@ -93,11 +93,56 @@ const LoginScreen = () => {
       const response = await authService.login(email, password, backendRole);
       
       console.log('✅ Login successful!');
+      console.log('📦 Full login response:', response);
       
       // Save tokens and user data
-      await AsyncStorage.setItem('authToken', response.accesstoken);
-      await AsyncStorage.setItem('refreshToken', response.refreshToken);
+      await AsyncStorage.setItem('authToken', response.accesstoken || response.token || '');
+      await AsyncStorage.setItem('refreshToken', response.refreshToken || '');
       await AsyncStorage.setItem('userRole', selectedRole);
+      
+      // Save user ID for orders - try multiple possible locations
+      console.log('🔍 LOGIN: Searching for userId in response...');
+      console.log('   Full response data:', JSON.stringify(response, null, 2));
+      
+      let userId = null;
+      
+      if (response._id) {
+        userId = response._id;
+        console.log('   ✅ Found userId in response._id:', userId);
+      } else if (response.id) {
+        userId = response.id;
+        console.log('   ✅ Found userId in response.id:', userId);
+      } else if (response.userId) {
+        userId = response.userId;
+        console.log('   ✅ Found userId in response.userId:', userId);
+      } else if (response.user?._id) {
+        userId = response.user._id;
+        console.log('   ✅ Found userId in response.user._id:', userId);
+      } else if (response.user?.id) {
+        userId = response.user.id;
+        console.log('   ✅ Found userId in response.user.id:', userId);
+      } else if (response.data?._id) {
+        userId = response.data._id;
+        console.log('   ✅ Found userId in response.data._id:', userId);
+      } else if (response.data?.user?._id) {
+        userId = response.data.user._id;
+        console.log('   ✅ Found userId in response.data.user._id:', userId);
+      }
+      
+      if (userId) {
+        await AsyncStorage.setItem('userId', userId);
+        console.log('💾 LOGIN: Saved userId to AsyncStorage:', userId);
+        
+        // Verify it was saved
+        const savedUserId = await AsyncStorage.getItem('userId');
+        console.log('✅ LOGIN: Verified userId in storage:', savedUserId);
+      } else {
+        console.error('❌ LOGIN: Could not find userId in login response!');
+        console.error('   Response structure:', Object.keys(response));
+        console.error('   Available fields:', response);
+      }
+      
+      console.log('💾 Saved user data to storage');
       
       // Navigate based on selected role
       switch(selectedRole) {

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { View, Text, SafeAreaView, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, Alert, Modal } from 'react-native';
 import AntDesign from 'react-native-vector-icons/AntDesign';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -35,7 +35,8 @@ interface Pharmacy {
     postalCode: string;
   };
   contactPhone?: string;
-  inventory: Medicine[];
+  inventory?: Medicine[];
+  medicines?: Medicine[];  // Backend sends 'medicines', we normalize to 'inventory'
 }
 
 interface CartItem {
@@ -67,10 +68,33 @@ export default function OrderMedicine() {
       // Using your backend route: GET /api/pharmacy/with-inventory
       const response = await api.get('/pharmacy/with-inventory');
       
+      console.log('📦 Backend response:', response.data);
+      
       if (response.data.success) {
-        setPharmacies(response.data.data || response.data.pharmacies || []);
+        const pharmaciesData = response.data.data || response.data.pharmacies || [];
+        console.log('📋 Pharmacies loaded:', pharmaciesData.length);
+        
+        // Normalize: Backend sends 'medicines', frontend uses 'inventory'
+        const normalizedPharmacies = pharmaciesData.map((pharmacy: any) => ({
+          ...pharmacy,
+          inventory: pharmacy.inventory || pharmacy.medicines || []  // ← Fix here!
+        }));
+        
+        // Debug: Check each pharmacy's inventory
+        normalizedPharmacies.forEach((pharmacy: any, index: number) => {
+          console.log(`🏥 Pharmacy ${index + 1}: ${pharmacy.pharmacyName}`);
+          console.log(`   📦 Inventory count: ${pharmacy.inventory?.length || 0}`);
+          if (pharmacy.inventory && pharmacy.inventory.length > 0) {
+            console.log(`   💊 First medicine:`, pharmacy.inventory[0]);
+          } else {
+            console.warn(`   ⚠️ No inventory for ${pharmacy.pharmacyName}`);
+          }
+        });
+        
+        setPharmacies(normalizedPharmacies);
       } else {
-        Alert.alert('Error', 'Failed to load pharmacies');
+        console.warn('⚠️ Backend returned success: false');
+        Alert.alert('Error', response.data.message || 'Failed to load pharmacies');
       }
     } catch (error: any) {
       console.error('Error fetching pharmacies:', error);
@@ -100,7 +124,7 @@ export default function OrderMedicine() {
   };
 
   // Get medicine display name (with proper fallback)
-  const getMedicineName = (medicine: Medicine) => {
+  const getMedicineName = (medicine: any) => {
     // If we have a name, use it
     if (medicine.medicineName) return medicine.medicineName;
     if (medicine.brandName) return medicine.brandName;
@@ -109,6 +133,7 @@ export default function OrderMedicine() {
     // Generate a descriptive name based on available information
     const parts = [];
     if (medicine.category) parts.push(medicine.category);
+    if (medicine.dosage) parts.push(medicine.dosage);
     if (medicine.strength) parts.push(medicine.strength);
     if (medicine.doseForm) parts.push(medicine.doseForm);
     
@@ -116,40 +141,77 @@ export default function OrderMedicine() {
       return parts.join(' ');
     }
     
-    // Last resort - use category or generic medicine name
-    return medicine.category || 'Generic Medicine';
+    // Last resort - use category or ID-based name
+    if (medicine.category) return medicine.category + ' Medicine';
+    if (medicine._id) return 'Medicine #' + medicine._id.slice(-6).toUpperCase();
+    
+    return 'Generic Medicine';
   };
 
   // Add to cart
-  const addToCart = (medicine: Medicine, pharmacy: Pharmacy) => {
+  const addToCart = (medicine: any, pharmacy: any) => {
+    console.log('🛒 Add to cart clicked');
+    console.log('   Medicine:', medicine);
+    console.log('   Pharmacy:', pharmacy);
+    
+    // Check if we have required data
+    if (!medicine || !medicine._id) {
+      console.error('❌ Invalid medicine object:', medicine);
+      Alert.alert('Error', 'Invalid medicine data');
+      return;
+    }
+    
+    if (!pharmacy || !pharmacy._id) {
+      console.error('❌ Invalid pharmacy object:', pharmacy);
+      Alert.alert('Error', 'Invalid pharmacy data');
+      return;
+    }
+    
     const quantity = getQuantity(medicine._id);
     const displayName = getMedicineName(medicine);
+    
+    console.log('   Quantity:', quantity);
+    console.log('   Display name:', displayName);
+    console.log('   Price:', medicine.price);
     
     const cartItem: CartItem = {
       medicineId: medicine._id,
       medicineName: displayName,
       pharmacyId: pharmacy._id,
       pharmacyName: pharmacy.pharmacyName,
-      price: medicine.price,
+      price: medicine.price || 0,
       quantity: quantity
     };
+    
+    console.log('   Cart item created:', cartItem);
 
     setCart(prev => {
+      console.log('   Previous cart:', prev);
+      
       const existing = prev.find(item => item.medicineId === medicine._id && item.pharmacyId === pharmacy._id);
+      
       if (existing) {
-        return prev.map(item =>
+        console.log('   Item already in cart, increasing quantity');
+        const newCart = prev.map(item =>
           item.medicineId === medicine._id && item.pharmacyId === pharmacy._id
             ? { ...item, quantity: item.quantity + quantity }
             : item
         );
+        console.log('   New cart:', newCart);
+        return newCart;
+      } else {
+        console.log('   Adding new item to cart');
+        const newCart = [...prev, cartItem];
+        console.log('   New cart:', newCart);
+        return newCart;
       }
-      return [...prev, cartItem];
     });
 
     // Reset quantity
     setQuantities(prev => ({ ...prev, [medicine._id]: 1 }));
     
     Alert.alert('Success', `${displayName} added to cart!`);
+    console.log('✅ Add to cart complete');
   };
 
   // Update cart item quantity
@@ -200,22 +262,21 @@ export default function OrderMedicine() {
       return;
     }
 
-    Alert.alert(
-      'Checkout',
-      `Total: LKR ${getCartTotal().toFixed(2)}\n\nProceed to payment?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Proceed',
-          onPress: () => {
-            // Navigate to payment or order confirmation
-            setIsCartOpen(false);
-            Alert.alert('Success', 'Order placed successfully!');
-            setCart([]);
-          }
-        }
-      ]
-    );
+    console.log('💳 Proceeding to checkout');
+    console.log('   Cart items:', cart);
+    console.log('   Total:', getCartTotal());
+
+    // Close cart modal
+    setIsCartOpen(false);
+
+    // Navigate to checkout page with cart data
+    router.push({
+      pathname: '/home/checkout',
+      params: {
+        cartData: JSON.stringify(cart),
+        total: getCartTotal().toString()
+      }
+    });
   };
 
   // Get total cart items
@@ -223,24 +284,48 @@ export default function OrderMedicine() {
     return cart.reduce((sum, item) => sum + item.quantity, 0);
   };
 
-  // Filter medicines based on search
-  const getFilteredPharmacies = () => {
-    if (!searchQuery.trim()) return pharmacies;
+  // Filter medicines based on search (using useMemo for performance and safety)
+  const filteredPharmacies = useMemo(() => {
+    // Guard clause: ensure pharmacies is an array
+    if (!Array.isArray(pharmacies) || pharmacies.length === 0) {
+      return [];
+    }
+    
+    // No search query - return all pharmacies
+    if (!searchQuery.trim()) {
+      return pharmacies;
+    }
 
-    return pharmacies.map(pharmacy => ({
-      ...pharmacy,
-      inventory: pharmacy.inventory.filter(medicine => {
-        const searchLower = searchQuery.toLowerCase();
+    // Filter pharmacies based on search query
+    const searchLower = searchQuery.toLowerCase();
+    
+    const filtered = pharmacies.map(pharmacy => {
+      // Get inventory (backend may send as 'medicines' or 'inventory')
+      const inventory = pharmacy.inventory || pharmacy.medicines || [];
+      
+      // Ensure inventory exists and is an array
+      if (!Array.isArray(inventory)) {
+        return { ...pharmacy, inventory: [] };
+      }
+
+      const filteredInventory = inventory.filter(medicine => {
+        if (!medicine) return false;
+        
         const name = getMedicineName(medicine).toLowerCase();
         return name.includes(searchLower) ||
                medicine.genericName?.toLowerCase().includes(searchLower) ||
                medicine.brandName?.toLowerCase().includes(searchLower) ||
-               medicine.category.toLowerCase().includes(searchLower);
-      })
-    })).filter(pharmacy => pharmacy.inventory.length > 0);
-  };
+               medicine.category?.toLowerCase().includes(searchLower);
+      });
 
-  const filteredPharmacies = getFilteredPharmacies();
+      return {
+        ...pharmacy,
+        inventory: filteredInventory
+      };
+    }).filter(pharmacy => pharmacy.inventory && pharmacy.inventory.length > 0);
+
+    return filtered;
+  }, [pharmacies, searchQuery]);
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
@@ -256,7 +341,12 @@ export default function OrderMedicine() {
           
           <TouchableOpacity 
             className="relative ml-3"
-            onPress={() => setIsCartOpen(true)}
+            onPress={() => {
+              console.log('🛒 Cart icon clicked');
+              console.log('   Current cart:', cart);
+              console.log('   Total items:', getTotalCartItems());
+              setIsCartOpen(true);
+            }}
           >
             <Ionicons name="cart" size={28} color="white" />
             {getTotalCartItems() > 0 && (
@@ -291,14 +381,14 @@ export default function OrderMedicine() {
             <ActivityIndicator size="large" color="#41A67E" />
             <Text className="text-gray-600 mt-3">Loading medicines...</Text>
           </View>
-        ) : filteredPharmacies.length === 0 ? (
+        ) : !filteredPharmacies || filteredPharmacies.length === 0 ? (
           <View className="items-center justify-center py-20">
             <Ionicons name="medical-outline" size={64} color="#D1D5DB" />
             <Text className="text-gray-600 mt-3 text-lg">No medicines found</Text>
             <Text className="text-gray-500 text-sm">Try a different search term</Text>
           </View>
         ) : (
-          filteredPharmacies.map((pharmacy) => (
+          (filteredPharmacies || []).map((pharmacy) => (
             <View key={pharmacy._id} className="mb-4">
               {/* Pharmacy Header */}
               <View className="bg-white px-4 py-3 border-b border-gray-200">
@@ -309,12 +399,13 @@ export default function OrderMedicine() {
                   </Text>
                 </View>
                 <Text className="text-sm text-gray-600 mt-1">
-                  {pharmacy.address.city}, {pharmacy.address.district}
+                  {pharmacy.address?.city || 'Unknown'}, {pharmacy.address?.district || 'Unknown'}
                 </Text>
               </View>
 
               {/* Medicines */}
-              {pharmacy.inventory.map((medicine) => (
+              {Array.isArray(pharmacy.inventory) && pharmacy.inventory.length > 0 ? (
+                pharmacy.inventory.map((medicine) => (
                 <View
                   key={medicine._id}
                   className="bg-white px-4 py-4 border-b border-gray-100"
@@ -324,14 +415,16 @@ export default function OrderMedicine() {
                       <Text className="text-lg font-bold text-gray-900">
                         {getMedicineName(medicine)}
                       </Text>
-                      {medicine.brandName && (
+                      {(medicine.brandName || medicine.manufacturer) && (
                         <Text className="text-sm text-gray-600 mt-1">
-                          {medicine.brandName} • {medicine.manufacturer}
+                          {medicine.brandName || 'Generic'} {medicine.manufacturer ? `• ${medicine.manufacturer}` : ''}
                         </Text>
                       )}
-                      <Text className="text-xs text-gray-500 mt-1">
-                        {medicine.dosage} {medicine.doseForm} • {medicine.category}
-                      </Text>
+                      {(medicine.dosage || medicine.doseForm || medicine.category) && (
+                        <Text className="text-xs text-gray-500 mt-1">
+                          {medicine.dosage || ''} {medicine.doseForm || ''} {medicine.category ? `• ${medicine.category}` : ''}
+                        </Text>
+                      )}
                       
                       {/* Stock and Prescription Info */}
                       <View className="flex-row items-center mt-2 gap-2">
@@ -380,18 +473,31 @@ export default function OrderMedicine() {
                     </View>
 
                     <TouchableOpacity
-                      onPress={() => addToCart(medicine, pharmacy)}
-                      className="bg-teal-600 rounded-lg px-5 py-3 flex-row items-center"
-                      disabled={!medicine.isActive || medicine.stockQty < 1}
+                      onPress={() => {
+                        console.log('🛒 Add to Cart button clicked for:', medicine.medicineName || 'Unknown');
+                        console.log('   isActive:', medicine.isActive);
+                        console.log('   stockQty:', medicine.stockQty);
+                        addToCart(medicine, pharmacy);
+                      }}
+                      className={`rounded-lg px-5 py-3 flex-row items-center ${
+                        medicine.stockQty < 1 || medicine.isActive === false ? 'bg-gray-400' : 'bg-teal-600'
+                      }`}
+                      disabled={medicine.stockQty < 1 || medicine.isActive === false}
                     >
                       <Ionicons name="cart-outline" size={18} color="white" />
                       <Text className="text-white font-semibold ml-2">
-                        Add to Cart
+                        {medicine.stockQty < 1 ? 'Out of Stock' : 'Add to Cart'}
                       </Text>
                     </TouchableOpacity>
                   </View>
                 </View>
-              ))}
+              ))
+              ) : (
+                <View className="bg-white px-4 py-8 items-center">
+                  <Ionicons name="medical-outline" size={48} color="#D1D5DB" />
+                  <Text className="text-gray-500 mt-2">No medicines available</Text>
+                </View>
+              )}
             </View>
           ))
         )}

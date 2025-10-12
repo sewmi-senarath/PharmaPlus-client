@@ -21,6 +21,7 @@
       "bundleIdentifier": "com.sewmi.frontend"
     },
     "android": {
+      "package": "com.sewmi.frontend",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",

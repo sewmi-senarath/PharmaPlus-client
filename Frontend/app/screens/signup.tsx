@@ -49,6 +49,16 @@ const SignUpScreen = () => {
   };
 
   const handleSignUp = async () => {
+    // Block admin registration
+    if (role === 'Admin') {
+      Alert.alert(
+        'Admin Registration Disabled',
+        'Admin accounts cannot be created through self-registration. Please contact the system administrator for admin access.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
     // Validate all required fields
     if (!fullName || !email || !phone || !password) {
       Alert.alert('Error', 'Please fill in all required fields');
@@ -298,18 +308,38 @@ const SignUpScreen = () => {
               />
             </View>
 
+            {/* Admin Registration Notice */}
+            {role === 'Admin' && (
+              <View className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                <View className="flex-row items-center">
+                  <AntDesign name="warning" size={20} color="#D97706" />
+                  <Text className="text-yellow-800 font-semibold ml-2">Admin Registration Disabled</Text>
+                </View>
+                <Text className="text-yellow-700 text-sm mt-2">
+                  Admin accounts cannot be created through self-registration. Please contact the system administrator to get admin access.
+                </Text>
+              </View>
+            )}
+
             {/* Sign Up Button */}
             <TouchableOpacity
               className="w-full p-4 rounded-lg shadow-md"
-              style={{ backgroundColor: isLoading ? '#9CA3AF' : '#41A67E' }}
+              style={{ backgroundColor: (isLoading || role === 'Admin') ? '#9CA3AF' : '#41A67E' }}
               onPress={handleSignUp}
-              disabled={isLoading}
+              disabled={isLoading || role === 'Admin'}
             >
               {isLoading ? (
                 <View className="flex-row justify-center items-center">
                   <ActivityIndicator color="#fff" />
                   <Text className="text-white text-center text-lg font-semibold ml-2">
                     Creating Account...
+                  </Text>
+                </View>
+              ) : role === 'Admin' ? (
+                <View className="flex-row justify-center items-center">
+                  <AntDesign name="lock" size={20} color="white" />
+                  <Text className="text-white text-center text-lg font-semibold ml-2">
+                    Admin Registration Disabled
                   </Text>
                 </View>
               ) : (
