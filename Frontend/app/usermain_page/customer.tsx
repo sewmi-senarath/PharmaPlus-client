@@ -25,11 +25,11 @@ export default function CustomerHub() {
       <ScrollView className="flex-1 px-5" contentContainerStyle={{ paddingBottom: 100 }}>
         {/* Welcome bar */}
         <View className="bg-emerald-50 rounded-2xl p-4 mt-4">
-          <Text className="text-emerald-900 font-semibold">Welcome, John!</Text>
+          <Text className="text-emerald-900 font-semibold">Welcome, gabilan!</Text>
           <Text className="text-emerald-700 text-xs mt-1">Health Status</Text>
         </View>
 
-        {/* Quick actions */}
+        {/* Quick actions*/}
         <View className="flex-row gap-3 mt-3">
           <Pressable className="flex-1" onPress={() => router.push('/usermain_page/order-medition')}>
             <Tile icon="add-outline" label="Order Medicine" />
