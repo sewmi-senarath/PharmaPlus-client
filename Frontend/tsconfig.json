@@ -1,18 +1,23 @@
 {
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
-    "strict": true,
-    "paths": {
-      "@/*": [
-        "./*"
-      ]
-    }
+    "baseUrl": ".",
+    "paths": { "@/*": ["src/*"] },
+    "skipLibCheck": true,
+    "jsx": "react-native",
+    "esModuleInterop": true
   },
   "include": [
+    "app",
+    "src",
     "**/*.ts",
     "**/*.tsx",
     ".expo/types/**/*.ts",
     "expo-env.d.ts",
     "nativewind-env.d.ts"
-  ]
+
+, "app/index.tsx", "app/_layout.tsx", "app/screens/profile.tsx", "app/screens/order-details.tsx", "app/screens/rider-dashboard.tsx"  ]
+
+//, "app/index.jsx", "app/_layout.jsx"  ]
+
 }
