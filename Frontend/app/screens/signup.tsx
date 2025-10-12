@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, SafeAreaView, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, SafeAreaView, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import AntDesign from 'react-native-vector-icons/AntDesign'; 
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { authService } from '../../config/authService';
 
 const SignUpScreen = () => {
   const router = useRouter();
@@ -13,6 +14,7 @@ const SignUpScreen = () => {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
   // Role-specific fields
   const [address, setAddress] = useState('');
@@ -39,47 +41,67 @@ const SignUpScreen = () => {
     const roleMap: any = {
       'Customer': 'customer',
       'Pharmacist': 'pharmacist',
-      'Rider': 'driver', // Backend uses "driver" not "rider"
+      'Rider': 'driver',
       'Admin': 'admin',
     };
     return roleMap[frontendRole] || frontendRole.toLowerCase();
   };
 
-  const handleSignUp = () => {
+  const handleSignUp = async () => {
     // Validate passwords match
     if (password !== confirmPassword) {
-      alert('Passwords do not match!');
+      Alert.alert('Error', 'Passwords do not match!');
       return;
     }
 
-    // Prepare data based on role
+    // Validate required fields
+    if (!fullName || !email || !phone || !password) {
+      Alert.alert('Error', 'Please fill in all required fields');
+      return;
+    }
+
+    // Prepare data based on role - MATCH BACKEND REQUIREMENTS
     const userData: any = {
       name: fullName,
       email,
       phone,
       password,
       role: getRoleForBackend(role as string),
+      preferred_language: 'en', // Required by backend - default to English
     };
 
-    // Add role-specific fields
-    if (role === 'Customer' || role === 'Pharmacist' || role === 'Rider') {
-      userData.address = address;
-    }
-    if (role === 'Pharmacist') {
-      userData.pharmacyLicense = pharmacyLicense;
-    }
-    if (role === 'Rider') {
-      userData.vehicleNumber = vehicleNumber;
-    }
+    // Note: Backend doesn't handle these fields in user registration
+    // They should be saved separately after user is created
+    // For now, we'll just register the basic user info
 
-    console.log('Signing up with:', userData);
-    // TODO: Add your API call here to register the user
-    
-    // Navigate to login after successful signup
-    router.push({
-      pathname: '/screens/login',
-      params: { role: role }
-    });
+    setLoading(true);
+    try {
+      console.log('Signing up with:', userData);
+      const response = await authService.signup(userData);
+      
+      console.log('Signup successful:', response);
+      Alert.alert(
+        'Success',
+        'Account created successfully! Please login.',
+        [
+          {
+            text: 'OK',
+            onPress: () => router.push({
+              pathname: '/screens/login',
+              params: { role: role }
+            })
+          }
+        ]
+      );
+    } catch (error: any) {
+      console.error('Signup error:', error);
+      Alert.alert(
+        'Signup Failed',
+        error.message || 'Failed to create account. Please try again.'
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleGoBack = () => {
@@ -222,12 +244,17 @@ const SignUpScreen = () => {
             {/* Sign Up Button */}
             <TouchableOpacity
               className="w-full p-4 rounded-lg shadow-md"
-              style={{ backgroundColor: '#41A67E' }}
+              style={{ backgroundColor: loading ? '#9CA3AF' : '#41A67E' }}
               onPress={handleSignUp}
+              disabled={loading}
             >
-              <Text className="text-white text-center text-lg font-semibold">
-                Sign Up
-              </Text>
+              {loading ? (
+                <ActivityIndicator color="#ffffff" />
+              ) : (
+                <Text className="text-white text-center text-lg font-semibold">
+                  Sign Up
+                </Text>
+              )}
             </TouchableOpacity>
 
             {/* Already have account - Link to Login */}
