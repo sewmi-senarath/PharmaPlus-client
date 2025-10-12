@@ -37,7 +37,7 @@ export default function PharmacyTabsLayout() {
           ),
         }}
       />
-      <Tabs.Screen
+      {/* <Tabs.Screen
         name="trends"
         options={{
           title: 'Trends',
@@ -45,7 +45,7 @@ export default function PharmacyTabsLayout() {
             <Ionicons name="analytics-outline" color={color} size={size} />
           ),
         }}
-      />
+      /> */}
 
       <Tabs.Screen
         name="settings"
