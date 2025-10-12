@@ -8,7 +8,7 @@
  * - Physical Device: http://192.168.1.x:5000
  */
 
-const DEFAULT_API = "http://10.0.2.2:5000";
+const DEFAULT_API = process.env.EXPO_PUBLIC_API_BASE_URL ||  "http://192.168.1.10:5000/api";
 
 // Base API URL without trailing slash
 export const API_BASE = process.env.EXPO_PUBLIC_API_BASE_URL?.replace(/\/+$/, "") || DEFAULT_API;
