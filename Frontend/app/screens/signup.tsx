@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, SafeAreaView, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import AntDesign from 'react-native-vector-icons/AntDesign'; 
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { authService } from '../../config/authService';
+import api from '../../config/api';
 
 const SignUpScreen = () => {
   const router = useRouter();
@@ -14,7 +14,8 @@ const SignUpScreen = () => {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [preferredLanguage, setPreferredLanguage] = useState('en');
+  const [isLoading, setIsLoading] = useState(false);
 
   // Role-specific fields
   const [address, setAddress] = useState('');
@@ -41,66 +42,101 @@ const SignUpScreen = () => {
     const roleMap: any = {
       'Customer': 'customer',
       'Pharmacist': 'pharmacist',
-      'Rider': 'driver',
+      'Rider': 'driver', // Backend uses "driver" not "rider"
       'Admin': 'admin',
     };
     return roleMap[frontendRole] || frontendRole.toLowerCase();
   };
 
   const handleSignUp = async () => {
+    // Block admin registration
+    if (role === 'Admin') {
+      Alert.alert(
+        'Admin Registration Disabled',
+        'Admin accounts cannot be created through self-registration. Please contact the system administrator for admin access.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    // Validate all required fields
+    if (!fullName || !email || !phone || !password) {
+      Alert.alert('Error', 'Please fill in all required fields');
+      return;
+    }
+
     // Validate passwords match
     if (password !== confirmPassword) {
       Alert.alert('Error', 'Passwords do not match!');
       return;
     }
 
-    // Validate required fields
-    if (!fullName || !email || !phone || !password) {
-      Alert.alert('Error', 'Please fill in all required fields');
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      Alert.alert('Error', 'Please enter a valid email address');
       return;
     }
 
-    // Prepare data based on role - MATCH BACKEND REQUIREMENTS
-    const userData: any = {
+    // Prepare data for backend (only fields backend expects)
+    const userData = {
       name: fullName,
       email,
       phone,
       password,
       role: getRoleForBackend(role as string),
-      preferred_language: 'en', // Required by backend - default to English
+      preferred_language: preferredLanguage,
     };
 
-    // Note: Backend doesn't handle these fields in user registration
-    // They should be saved separately after user is created
-    // For now, we'll just register the basic user info
-
-    setLoading(true);
+    console.log('Signing up with:', userData);
+    
     try {
-      console.log('Signing up with:', userData);
-      const response = await authService.signup(userData);
+      setIsLoading(true);
       
-      console.log('Signup successful:', response);
-      Alert.alert(
-        'Success',
-        'Account created successfully! Please login.',
-        [
-          {
-            text: 'OK',
-            onPress: () => router.push({
-              pathname: '/screens/login',
-              params: { role: role }
-            })
-          }
-        ]
-      );
+      // Backend route: router.post("/register", registerUserController);
+      // Mounted at: app.use('/api/users', userRouter)
+      // API baseURL already includes /api, so we just need /users/register
+      const response = await api.post('/users/register', userData);
+      
+      const data = response.data;
+      
+      console.log('✅ Signup response:', data);
+      
+      if (data.success) {
+        console.log('🎉 Signup successful for role:', role);
+        
+        // Clear loading state before showing alert
+        setIsLoading(false);
+        
+        // Show success message and redirect
+        Alert.alert(
+          'Registration Successful! ✅',
+          'Your account has been created. Please login to continue.',
+          [
+            {
+              text: 'Go to Login',
+              onPress: () => {
+                console.log('🔄 Redirecting to login with role:', role);
+                router.replace({
+                  pathname: '/screens/login',
+                  params: { role: role }
+                });
+              }
+            }
+          ],
+          { cancelable: false }
+        );
+      } else {
+        Alert.alert('Error', data.message || 'Registration failed. Please try again.');
+      }
     } catch (error: any) {
-      console.error('Signup error:', error);
-      Alert.alert(
-        'Signup Failed',
-        error.message || 'Failed to create account. Please try again.'
-      );
+      console.error('❌ Registration error:', error);
+      console.error('Error response:', error.response?.data);
+      
+      const errorMessage = error.response?.data?.message || error.message || 'Network error. Please check your connection and try again.';
+      Alert.alert('Error', errorMessage);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -175,6 +211,37 @@ const SignUpScreen = () => {
               />
             </View>
 
+            {/* Preferred Language */}
+            <View className="mb-4">
+              <Text className="text-sm font-medium text-gray-700 mb-1">Preferred Language</Text>
+              <View className="flex-row gap-2">
+                <TouchableOpacity
+                  className={`flex-1 p-3 rounded-lg border ${preferredLanguage === 'en' ? 'border-[#41A67E] bg-[#41A67E]/10' : 'border-gray-300'}`}
+                  onPress={() => setPreferredLanguage('en')}
+                >
+                  <Text className={`text-center ${preferredLanguage === 'en' ? 'text-[#41A67E] font-semibold' : 'text-gray-700'}`}>
+                    English
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  className={`flex-1 p-3 rounded-lg border ${preferredLanguage === 'si' ? 'border-[#41A67E] bg-[#41A67E]/10' : 'border-gray-300'}`}
+                  onPress={() => setPreferredLanguage('si')}
+                >
+                  <Text className={`text-center ${preferredLanguage === 'si' ? 'text-[#41A67E] font-semibold' : 'text-gray-700'}`}>
+                    Sinhala
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  className={`flex-1 p-3 rounded-lg border ${preferredLanguage === 'ta' ? 'border-[#41A67E] bg-[#41A67E]/10' : 'border-gray-300'}`}
+                  onPress={() => setPreferredLanguage('ta')}
+                >
+                  <Text className={`text-center ${preferredLanguage === 'ta' ? 'text-[#41A67E] font-semibold' : 'text-gray-700'}`}>
+                    Tamil
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
             {/* Address - for Customer, Pharmacist, Rider */}
             {(role === 'Customer' || role === 'Pharmacist' || role === 'Rider') && (
               <View className="mb-4">
@@ -241,15 +308,40 @@ const SignUpScreen = () => {
               />
             </View>
 
+            {/* Admin Registration Notice */}
+            {role === 'Admin' && (
+              <View className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                <View className="flex-row items-center">
+                  <AntDesign name="warning" size={20} color="#D97706" />
+                  <Text className="text-yellow-800 font-semibold ml-2">Admin Registration Disabled</Text>
+                </View>
+                <Text className="text-yellow-700 text-sm mt-2">
+                  Admin accounts cannot be created through self-registration. Please contact the system administrator to get admin access.
+                </Text>
+              </View>
+            )}
+
             {/* Sign Up Button */}
             <TouchableOpacity
               className="w-full p-4 rounded-lg shadow-md"
-              style={{ backgroundColor: loading ? '#9CA3AF' : '#41A67E' }}
+              style={{ backgroundColor: (isLoading || role === 'Admin') ? '#9CA3AF' : '#41A67E' }}
               onPress={handleSignUp}
-              disabled={loading}
+              disabled={isLoading || role === 'Admin'}
             >
-              {loading ? (
-                <ActivityIndicator color="#ffffff" />
+              {isLoading ? (
+                <View className="flex-row justify-center items-center">
+                  <ActivityIndicator color="#fff" />
+                  <Text className="text-white text-center text-lg font-semibold ml-2">
+                    Creating Account...
+                  </Text>
+                </View>
+              ) : role === 'Admin' ? (
+                <View className="flex-row justify-center items-center">
+                  <AntDesign name="lock" size={20} color="white" />
+                  <Text className="text-white text-center text-lg font-semibold ml-2">
+                    Admin Registration Disabled
+                  </Text>
+                </View>
               ) : (
                 <Text className="text-white text-center text-lg font-semibold">
                   Sign Up

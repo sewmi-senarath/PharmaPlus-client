@@ -3,7 +3,6 @@ import { View, Text, TextInput, TouchableOpacity, SafeAreaView, ScrollView } fro
 import AntDesign from 'react-native-vector-icons/AntDesign'; 
 import { useRouter } from 'expo-router';
 import { authService } from '../../config/authService';
-import { pharmacyCheckService } from 'app/pharmacy/components/services/pharmacyCheckService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 function GoogleIcon() {
@@ -62,7 +61,7 @@ const LoginScreen = () => {
     const roleMap: any = {
       'Customer': 'customer',
       'Pharmacist': 'pharmacist',
-      'Rider': 'driver', 
+      'Rider': 'driver', // Backend uses "driver" not "rider"
       'Admin': 'admin',
     };
     return roleMap[frontendRole] || frontendRole.toLowerCase();
@@ -86,8 +85,6 @@ const LoginScreen = () => {
       }
 
       const backendRole = getRoleForBackend(selectedRole);
-      console.log('Logging in...', { email, role: backendRole });
-
       console.log('📧 Email:', email);
       console.log('👤 Frontend Role:', selectedRole);
       console.log('🔄 Backend Role:', backendRole);
@@ -96,50 +93,57 @@ const LoginScreen = () => {
       const response = await authService.login(email, password, backendRole);
       
       console.log('✅ Login successful!');
-
-      const userId = response.userId || response._id || response.id;
-      
-      if (!userId) {
-        console.error('⚠️ No userId found in response:', response);
-        throw new Error('User ID not found in login response');
-      }
-      
-      console.log('👤 User ID:', userId);
+      console.log('📦 Full login response:', response);
       
       // Save tokens and user data
-      await AsyncStorage.setItem('authToken', response.accesstoken);
-      await AsyncStorage.setItem('refreshToken', response.refreshToken);
+      await AsyncStorage.setItem('authToken', response.accesstoken || response.token || '');
+      await AsyncStorage.setItem('refreshToken', response.refreshToken || '');
       await AsyncStorage.setItem('userRole', selectedRole);
-      await AsyncStorage.setItem('userId', userId);
       
-      //For Pharmacist, check if they have a registered pharmacy
-      if (selectedRole === 'Pharmacist') {
-        console.log('🔍 Checking if pharmacist has a registered pharmacy...');
-        
-        try {
-          const userId = response.userId || response._id;
-          const pharmacy = await pharmacyCheckService.checkPharmacyExists(userId);
-          
-          if (pharmacy && pharmacy.data) {
-            // Pharmacy exists - go to dashboard
-            console.log('✅ Pharmacy found, navigating to dashboard');
-            await AsyncStorage.setItem('pharmacyId', pharmacy.data._id);
-            router.replace('/pharmacy/(tabs)/dashboard' as any);
-          } else {
-            // No pharmacy - go to registration
-            console.log('ℹ️ No pharmacy found, navigating to registration');
-            router.replace('/pharmacy/pharmacy_register' as any);
-          }
-        } catch (error: any) {
-          console.log('ℹ️ Error checking pharmacy, assuming no pharmacy exists');
-          // If check fails, assume no pharmacy and go to registration
-          router.replace('/pharmacy/pharmacy_register' as any);
-        }
-        
-        return; 
-        // Exit here for pharmacist
+      // Save user ID for orders - try multiple possible locations
+      console.log('🔍 LOGIN: Searching for userId in response...');
+      console.log('   Full response data:', JSON.stringify(response, null, 2));
+      
+      let userId = null;
+      
+      if (response._id) {
+        userId = response._id;
+        console.log('   ✅ Found userId in response._id:', userId);
+      } else if (response.id) {
+        userId = response.id;
+        console.log('   ✅ Found userId in response.id:', userId);
+      } else if (response.userId) {
+        userId = response.userId;
+        console.log('   ✅ Found userId in response.userId:', userId);
+      } else if (response.user?._id) {
+        userId = response.user._id;
+        console.log('   ✅ Found userId in response.user._id:', userId);
+      } else if (response.user?.id) {
+        userId = response.user.id;
+        console.log('   ✅ Found userId in response.user.id:', userId);
+      } else if (response.data?._id) {
+        userId = response.data._id;
+        console.log('   ✅ Found userId in response.data._id:', userId);
+      } else if (response.data?.user?._id) {
+        userId = response.data.user._id;
+        console.log('   ✅ Found userId in response.data.user._id:', userId);
       }
-
+      
+      if (userId) {
+        await AsyncStorage.setItem('userId', userId);
+        console.log('💾 LOGIN: Saved userId to AsyncStorage:', userId);
+        
+        // Verify it was saved
+        const savedUserId = await AsyncStorage.getItem('userId');
+        console.log('✅ LOGIN: Verified userId in storage:', savedUserId);
+      } else {
+        console.error('❌ LOGIN: Could not find userId in login response!');
+        console.error('   Response structure:', Object.keys(response));
+        console.error('   Available fields:', response);
+      }
+      
+      console.log('💾 Saved user data to storage');
+      
       // Navigate based on selected role
       switch(selectedRole) {
         case 'Customer':
@@ -147,6 +151,9 @@ const LoginScreen = () => {
             pathname: '/home' as any,
             params: { userRole: 'customer' }
           });
+          break;
+        case 'Pharmacist':
+          router.replace('/pharmacy' as any);
           break;
         case 'Rider':
           router.replace('/screens/rider-dashboard' as any);

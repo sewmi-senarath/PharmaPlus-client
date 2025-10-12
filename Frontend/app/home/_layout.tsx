@@ -90,6 +90,14 @@ export default function HomeLayout() {
           href: null,
         }}
       />
+
+      {/* Hide checkout from tabs */}
+      <Tabs.Screen
+        name="checkout"
+        options={{
+          href: null,
+        }}
+      />
     </Tabs>
   );
 }
