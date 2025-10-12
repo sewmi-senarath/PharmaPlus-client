@@ -4,16 +4,16 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import AntDesign from 'react-native-vector-icons/AntDesign';
 import * as Notifications from 'expo-notifications';
 import { medicationService } from '../../services/medicationService';
-import DateTimePicker from '@react-native-community/datetimepicker';
 
-// Configure notifications
+// Configure LOCAL notifications (not remote push notifications)
+// This tells the app how to handle notifications when they arrive
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
+    shouldShowAlert: true,    // Show alert on screen
+    shouldPlaySound: true,     // Play notification sound
+    shouldSetBadge: true,      // Update app badge
+    shouldShowBanner: true,    // Show notification banner
+    shouldShowList: true,      // Show in notification center
   }),
 });
 
@@ -44,18 +44,11 @@ export default function MedicationsScreen() {
   const [notes, setNotes] = useState('');
   const [startDate, setStartDate] = useState('');
 
-  // Date/Time picker states
-  const [showTimePicker, setShowTimePicker] = useState(false);
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [selectedTime, setSelectedTime] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [timesList, setTimesList] = useState<string[]>([]);
-
   const frequencies = ['Once daily', 'Twice daily', 'Three times daily', 'Four times daily', 'As needed'];
 
   // Load medications and request permissions on mount
   useEffect(() => {
-    registerForPushNotificationsAsync();
+    requestLocalNotificationPermissions();
     loadMedications();
   }, []);
 
@@ -93,49 +86,67 @@ export default function MedicationsScreen() {
     }
   };
 
-  const registerForPushNotificationsAsync = async () => {
-    if (Platform.OS === 'android') {
-      await Notifications.setNotificationChannelAsync('medications', {
-        name: 'Medication Reminders',
-        importance: Notifications.AndroidImportance.MAX,
-        vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#41A67E',
-      });
-    }
+  // Request permission for LOCAL notifications only (no remote push notifications)
+  const requestLocalNotificationPermissions = async () => {
+    try {
+      // Setup Android notification channel for local notifications
+      if (Platform.OS === 'android') {
+        await Notifications.setNotificationChannelAsync('medications', {
+          name: 'Medication Reminders',
+          importance: Notifications.AndroidImportance.MAX,
+          vibrationPattern: [0, 250, 250, 250],
+          lightColor: '#41A67E',
+        });
+      }
 
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    let finalStatus = existingStatus;
-    
-    if (existingStatus !== 'granted') {
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
-    }
-    
-    if (finalStatus !== 'granted') {
-      Alert.alert('Permission Required', 'Please enable notifications to receive medication reminders!');
-      return;
+      // Request permission for LOCAL notifications only
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
+      
+      if (existingStatus !== 'granted') {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+      
+      if (finalStatus !== 'granted') {
+        Alert.alert(
+          'Permission Required', 
+          'Please enable notifications to receive medication reminders!\n\nNote: These are LOCAL notifications scheduled on your device, not remote push notifications.'
+        );
+        return false;
+      }
+      
+      console.log('✅ Local notification permissions granted');
+      return true;
+    } catch (error) {
+      console.error('❌ Error requesting notification permissions:', error);
+      return false;
     }
   };
 
+  // Schedule LOCAL notification (not remote push) - works in Expo Go!
   const scheduleNotification = async (medication: Medication) => {
     try {
       // Parse time (e.g., "08:00 AM")
       const times = medication.time.split(',').map(t => t.trim());
+      let lastNotificationId: string | undefined;
       
       for (const timeStr of times) {
         const [time, period] = timeStr.split(' ');
         const [hours, minutes] = time.split(':').map(Number);
         let hour = hours;
         
+        // Convert to 24-hour format
         if (period === 'PM' && hours !== 12) hour += 12;
         if (period === 'AM' && hours === 12) hour = 0;
 
+        // Schedule LOCAL notification (stored on device, triggers daily)
         const notificationId = await Notifications.scheduleNotificationAsync({
           content: {
             title: '💊 Medication Reminder',
             body: `Time to take ${medication.name} (${medication.dosage})`,
             sound: true,
-            data: { medicationId: medication.id },
+            data: { medicationId: medication._id || medication.id },
           },
           trigger: {
             type: Notifications.SchedulableTriggerInputTypes.DAILY,
@@ -144,24 +155,28 @@ export default function MedicationsScreen() {
           },
         });
         
-        console.log('📅 Notification scheduled:', notificationId);
-        return notificationId;
+        console.log(`📅 Local notification scheduled for ${timeStr}:`, notificationId);
+        lastNotificationId = notificationId;
       }
+      
+      return lastNotificationId;
     } catch (error) {
-      console.error('Error scheduling notification:', error);
-      Alert.alert('Error', 'Could not schedule notification');
+      console.error('❌ Error scheduling local notification:', error);
+      Alert.alert('Error', 'Could not schedule notification. Please check permissions.');
     }
   };
 
+  // Cancel a LOCAL notification
   const cancelNotification = async (notificationId: string) => {
     if (notificationId) {
       await Notifications.cancelScheduledNotificationAsync(notificationId);
+      console.log('🔕 Local notification cancelled:', notificationId);
     }
   };
 
   const handleAddMedication = async () => {
-    if (!medName || !dosage || timesList.length === 0) {
-      Alert.alert('Missing Fields', 'Please fill in medication name, dosage, and at least one reminder time');
+    if (!medName || !dosage || !time) {
+      Alert.alert('Missing Fields', 'Please fill in medication name, dosage, and reminder time');
       return;
     }
 
@@ -198,8 +213,8 @@ export default function MedicationsScreen() {
   };
 
   const handleEditMedication = async () => {
-    if (!editingMed || !medName || !dosage || timesList.length === 0) {
-      Alert.alert('Missing Fields', 'Please fill in medication name, dosage, and at least one reminder time');
+    if (!editingMed || !medName || !dosage || !time) {
+      Alert.alert('Missing Fields', 'Please fill in medication name, dosage, and reminder time');
       return;
     }
 
@@ -310,13 +325,6 @@ export default function MedicationsScreen() {
     setTime(medication.time);
     setNotes(medication.notes || '');
     setStartDate(medication.startDate);
-    
-    // Parse existing times into timesList
-    if (medication.time) {
-      const times = medication.time.split(',').map(t => t.trim());
-      setTimesList(times);
-    }
-    
     setShowAddModal(true);
   };
 
@@ -328,104 +336,8 @@ export default function MedicationsScreen() {
     setNotes('');
     setStartDate('');
     setEditingMed(null);
-    setTimesList([]);
-    setSelectedTime(new Date());
-    setSelectedDate(new Date());
   };
 
-  // Handle time picker
-  const handleTimeChange = (event: any, selectedDate?: Date) => {
-    console.log('Time picker event:', event.type, selectedDate);
-    
-    // On Android, picker closes automatically
-    if (Platform.OS === 'android') {
-      setShowTimePicker(false);
-    }
-    
-    if (event.type === 'dismissed') {
-      setShowTimePicker(false);
-      return;
-    }
-    
-    if (selectedDate && event.type === 'set') {
-      const hours = selectedDate.getHours();
-      const minutes = selectedDate.getMinutes();
-      const period = hours >= 12 ? 'PM' : 'AM';
-      const displayHours = hours % 12 || 12;
-      const formattedTime = `${displayHours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')} ${period}`;
-      
-      console.log('Formatted time:', formattedTime);
-      
-      // Add to times list
-      if (!timesList.includes(formattedTime)) {
-        const newTimesList = [...timesList, formattedTime];
-        setTimesList(newTimesList);
-        setTime(newTimesList.join(', '));
-        console.log('Times updated:', newTimesList);
-      } else {
-        Alert.alert('Duplicate', 'This time is already added');
-      }
-      
-      setShowTimePicker(false);
-      setSelectedTime(new Date()); // Reset for next pick
-    }
-  };
-
-  // Handle date picker
-  const handleDateChange = (event: any, selectedDate?: Date) => {
-    console.log('Date picker event:', event.type, selectedDate);
-    
-    if (Platform.OS === 'android') {
-      setShowDatePicker(false);
-    }
-    
-    if (event.type === 'dismissed') {
-      setShowDatePicker(false);
-      return;
-    }
-    
-    if (selectedDate && event.type === 'set') {
-      const formatted = selectedDate.toISOString().split('T')[0];
-      setStartDate(formatted);
-      setSelectedDate(selectedDate);
-      console.log('Date set to:', formatted);
-      setShowDatePicker(false);
-    }
-  };
-
-  // Remove a time from the list
-  const removeTime = (timeToRemove: string) => {
-    console.log('Removing time:', timeToRemove);
-    console.log('Current times:', timesList);
-    const newTimesList = timesList.filter(t => t !== timeToRemove);
-    console.log('New times:', newTimesList);
-    setTimesList(newTimesList);
-    setTime(newTimesList.join(', '));
-  };
-
-  // Manual time add (for web or backup)
-  const addTimeManually = () => {
-    Alert.prompt(
-      'Add Reminder Time',
-      'Enter time in format: HH:MM AM/PM\nExample: 08:00 AM',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Add',
-          onPress: (inputTime?: string) => {
-            if (inputTime && !timesList.includes(inputTime)) {
-              const newTimesList = [...timesList, inputTime];
-              setTimesList(newTimesList);
-              setTime(newTimesList.join(', '));
-              console.log('Time added manually:', inputTime);
-            }
-          },
-        },
-      ],
-      'plain-text',
-      ''
-    );
-  };
 
   // Verify notifications are scheduled
   const verifyNotifications = async () => {
@@ -441,19 +353,29 @@ export default function MedicationsScreen() {
     );
   };
 
+  // Test LOCAL notification (works in Expo Go!)
   const testNotification = async () => {
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: '💊 Test Notification',
-        body: 'Medication reminders are working!',
-        sound: true,
-      },
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-        seconds: 2,
-      },
-    });
-    Alert.alert('Test', 'Notification will appear in 2 seconds');
+    try {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: '💊 Test Notification',
+          body: 'Local medication reminders are working! ✅',
+          sound: true,
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+          seconds: 2,
+        },
+      });
+      Alert.alert(
+        '✅ Test Scheduled', 
+        'Local notification will appear in 2 seconds.\n\nThis is a LOCAL notification, not a remote push notification!'
+      );
+      console.log('🧪 Test local notification scheduled');
+    } catch (error) {
+      console.error('❌ Test notification failed:', error);
+      Alert.alert('Error', 'Could not schedule test notification');
+    }
   };
 
   return (
@@ -626,127 +548,76 @@ export default function MedicationsScreen() {
                 </View>
               </View>
 
-              {/* Time Picker */}
+              {/* Time Input - Simple & Universal */}
               <View className="mb-4">
-                <Text className="text-sm font-semibold text-gray-700 mb-2">Reminder Times *</Text>
+                <Text className="text-sm font-semibold text-gray-700 mb-2">Reminder Time(s) *</Text>
+                <TextInput
+                  className="w-full border border-gray-300 p-3 rounded-lg text-gray-800"
+                  placeholder="e.g., 08:00 AM or 08:00 AM, 08:00 PM"
+                  value={time}
+                  onChangeText={setTime}
+                />
+                <Text className="text-xs text-gray-500 mt-1">
+                  Format: HH:MM AM/PM. For multiple times use comma: 08:00 AM, 02:00 PM, 08:00 PM
+                </Text>
                 
-                {Platform.OS !== 'web' ? (
-                  /* Native Time Picker Buttons */
-                  <View className="flex-row gap-2">
+                {/* Quick Time Buttons */}
+                <View className="flex-row flex-wrap gap-2 mt-2">
+                  <Text className="text-xs text-gray-600 w-full mb-1">Quick Add:</Text>
+                  {['08:00 AM', '12:00 PM', '02:00 PM', '06:00 PM', '08:00 PM'].map((quickTime) => (
                     <TouchableOpacity
+                      key={quickTime}
                       onPress={() => {
-                        console.log('Opening time picker...');
-                        setShowTimePicker(true);
-                      }}
-                      className="flex-1 border-2 border-teal-600 bg-teal-50 p-3 rounded-lg flex-row items-center justify-center"
-                    >
-                      <Ionicons name="alarm-outline" size={20} color="#41A67E" />
-                      <Text className="text-teal-600 font-semibold ml-2">Pick Time</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={addTimeManually}
-                      className="px-4 border border-teal-600 bg-white p-3 rounded-lg flex-row items-center justify-center"
-                    >
-                      <Ionicons name="create-outline" size={20} color="#41A67E" />
-                      <Text className="text-teal-600 font-semibold ml-1">Type</Text>
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  /* Web Fallback - Manual Input */
-                  <View>
-                    <TextInput
-                      className="w-full border border-gray-300 p-3 rounded-lg text-gray-800 mb-2"
-                      placeholder="Enter time (e.g., 08:00 AM)"
-                      value={time}
-                      onChangeText={(text) => {
-                        setTime(text);
-                        if (text) {
-                          const times = text.split(',').map(t => t.trim());
-                          setTimesList(times);
+                        const currentTimes = time ? time.split(',').map(t => t.trim()) : [];
+                        if (!currentTimes.includes(quickTime)) {
+                          const newTimes = [...currentTimes, quickTime];
+                          setTime(newTimes.join(', '));
                         }
                       }}
-                    />
-                    <Text className="text-xs text-gray-500">
-                      Format: HH:MM AM/PM (e.g., 08:00 AM, 02:00 PM)
-                    </Text>
-                  </View>
-                )}
-
-                {/* Display Selected Times */}
-                {timesList.length > 0 && Platform.OS !== 'web' && (
-                  <View className="mt-2 flex-row flex-wrap gap-2">
-                    {timesList.map((t, index) => (
-                      <View key={index} className="bg-teal-100 px-3 py-2 rounded-lg flex-row items-center">
-                        <Ionicons name="time" size={16} color="#41A67E" />
-                        <Text className="text-teal-700 font-semibold ml-1">{t}</Text>
-                        <TouchableOpacity onPress={() => {
-                          console.log('Removing time:', t);
-                          removeTime(t);
-                        }} className="ml-2">
-                          <AntDesign name="close" size={14} color="#41A67E" />
-                        </TouchableOpacity>
-                      </View>
-                    ))}
-                  </View>
-                )}
-                
-                {Platform.OS !== 'web' && (
-                  <Text className="text-xs text-gray-500 mt-1">
-                    Tap &quot;Add Reminder Time&quot; to add multiple times per day
-                  </Text>
-                )}
+                      className="bg-teal-50 px-3 py-1 rounded-lg border border-teal-200"
+                    >
+                      <Text className="text-teal-700 text-xs">{quickTime}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
               </View>
 
-              {/* Time Picker Modal - Only on Native */}
-              {showTimePicker && Platform.OS !== 'web' && (
-                <DateTimePicker
-                  value={selectedTime}
-                  mode="time"
-                  is24Hour={false}
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                  onChange={handleTimeChange}
-                />
-              )}
-
-              {/* Start Date Picker */}
+              {/* Start Date - Simple Input */}
               <View className="mb-4">
-                <Text className="text-sm font-semibold text-gray-700 mb-2">Start Date</Text>
-                {Platform.OS !== 'web' ? (
+                <Text className="text-sm font-semibold text-gray-700 mb-2">Start Date (Optional)</Text>
+                <TextInput
+                  className="w-full border border-gray-300 p-3 rounded-lg text-gray-800"
+                  placeholder="YYYY-MM-DD (e.g., 2024-10-10)"
+                  value={startDate}
+                  onChangeText={setStartDate}
+                />
+                
+                {/* Quick Date Buttons */}
+                <View className="flex-row flex-wrap gap-2 mt-2">
+                  <TouchableOpacity
+                    onPress={() => setStartDate(new Date().toISOString().split('T')[0])}
+                    className="bg-teal-50 px-3 py-1 rounded-lg border border-teal-200"
+                  >
+                    <Text className="text-teal-700 text-xs">Today</Text>
+                  </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => {
-                      console.log('Opening date picker...');
-                      setShowDatePicker(true);
+                      const tomorrow = new Date();
+                      tomorrow.setDate(tomorrow.getDate() + 1);
+                      setStartDate(tomorrow.toISOString().split('T')[0]);
                     }}
-                    className="w-full border border-gray-300 p-3 rounded-lg flex-row items-center justify-between"
+                    className="bg-teal-50 px-3 py-1 rounded-lg border border-teal-200"
                   >
-                    <View className="flex-row items-center">
-                      <Ionicons name="calendar-outline" size={20} color="#6B7280" />
-                      <Text className="text-gray-800 ml-2">
-                        {startDate || 'Select start date (optional)'}
-                      </Text>
-                    </View>
-                    <AntDesign name="down" size={16} color="#6B7280" />
+                    <Text className="text-teal-700 text-xs">Tomorrow</Text>
                   </TouchableOpacity>
-                ) : (
-                  /* Web Fallback - Date Input */
-                  <TextInput
-                    className="w-full border border-gray-300 p-3 rounded-lg text-gray-800"
-                    placeholder="YYYY-MM-DD (e.g., 2024-10-10)"
-                    value={startDate}
-                    onChangeText={setStartDate}
-                  />
-                )}
+                  <TouchableOpacity
+                    onPress={() => setStartDate('')}
+                    className="bg-gray-100 px-3 py-1 rounded-lg border border-gray-300"
+                  >
+                    <Text className="text-gray-600 text-xs">Clear</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-
-              {/* Date Picker Modal - Only on Native */}
-              {showDatePicker && Platform.OS !== 'web' && (
-                <DateTimePicker
-                  value={selectedDate}
-                  mode="date"
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                  onChange={handleDateChange}
-                />
-              )}
 
               {/* Notes */}
               <View className="mb-6">

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, SafeAreaView, TextInput, TouchableOpacity, ScrollView, Alert, Platform } from 'react-native';
+import { View, Text, SafeAreaView, TextInput, TouchableOpacity, ScrollView, Alert, Platform, ActivityIndicator } from 'react-native';
 import AntDesign from 'react-native-vector-icons/AntDesign';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import api from '../../config/api';
 
 // Conditionally import Voice only for native platforms
 let Voice: any = null;
@@ -13,8 +14,8 @@ if (Platform.OS !== 'web') {
   }
 }
 
-// Sample medicines database
-const MEDICINES = [
+// Sample medicines database (keeping as fallback/example)
+const SAMPLE_MEDICINES = [
   {
     id: '1',
     name: 'Paracetamol 500mg',
@@ -163,15 +164,92 @@ const CATEGORIES = [
   'Cholesterol',
 ];
 
+interface RealMedicine {
+  _id: string;
+  medicineName: string;
+  genericName?: string;
+  brandName?: string;
+  dosage: string;
+  doseForm: string;
+  category: string;
+  manufacturer: string;
+  price: number;
+  stockQty: number;
+  requiresPrescription: boolean;
+  isActive: boolean;
+  pharmacyId?: {
+    pharmacyName: string;
+  };
+}
+
 export default function SearchScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [isVoiceSearching, setIsVoiceSearching] = useState(false);
   const [cart, setCart] = useState<string[]>([]);
+  const [medicines, setMedicines] = useState<RealMedicine[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch medicines from database
+  useEffect(() => {
+    fetchMedicines();
+  }, []);
+
+  const fetchMedicines = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Fetch from backend: GET /api/pharmacy/with-inventory
+      const response = await api.get('/pharmacy/with-inventory');
+      
+      if (response.data.success) {
+        // Flatten all medicines from all pharmacies
+        const allMedicines: RealMedicine[] = [];
+        const pharmacies = response.data.data || response.data.pharmacies || [];
+        
+        pharmacies.forEach((pharmacy: any) => {
+          if (pharmacy.inventory && Array.isArray(pharmacy.inventory)) {
+            pharmacy.inventory.forEach((medicine: any) => {
+              allMedicines.push({
+                ...medicine,
+                pharmacyId: {
+                  pharmacyName: pharmacy.pharmacyName
+                }
+              });
+            });
+          }
+        });
+        
+        setMedicines(allMedicines);
+      }
+    } catch (err: any) {
+      console.error('Error fetching medicines:', err);
+      setError(err.response?.data?.message || 'Failed to load medicines');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Get medicine display name
+  const getMedicineName = (medicine: RealMedicine) => {
+    if (medicine.medicineName) return medicine.medicineName;
+    if (medicine.brandName) return medicine.brandName;
+    if (medicine.genericName) return medicine.genericName;
+    
+    const parts = [];
+    if (medicine.category) parts.push(medicine.category);
+    if (medicine.dosage) parts.push(medicine.dosage);
+    if (medicine.doseForm) parts.push(medicine.doseForm);
+    
+    return parts.length > 0 ? parts.join(' ') : medicine.category || 'Medicine';
+  };
 
   // Set up voice recognition listeners
   useEffect(() => {
     if (Voice) {
+      // Set up event handlers
       Voice.onSpeechStart = () => {
         console.log('🎤 Started listening...');
         setIsVoiceSearching(true);
@@ -185,40 +263,73 @@ export default function SearchScreen() {
       Voice.onSpeechResults = (e: any) => {
         console.log('📝 Voice results:', e.value);
         if (e.value && e.value[0]) {
-          setSearchQuery(e.value[0]); // Set the recognized text as search query
+          const recognizedText = e.value[0];
+          console.log('✅ Setting search query:', recognizedText);
+          setSearchQuery(recognizedText);
           setIsVoiceSearching(false);
+          Alert.alert('Voice Search', `Searching for: "${recognizedText}"`);
         }
       };
       
       Voice.onSpeechError = (e: any) => {
-        console.error('❌ Voice error:', e.error);
+        console.error('❌ Voice error:', e);
         setIsVoiceSearching(false);
-        Alert.alert('Error', 'Could not recognize speech. Please try again or check microphone permissions.');
+        
+        let errorMessage = 'Could not recognize speech. Please try again.';
+        if (e.error?.message) {
+          errorMessage = e.error.message;
+        } else if (e.error?.code === '7') {
+          errorMessage = 'No speech detected. Please try speaking again.';
+        }
+        
+        Alert.alert('Voice Recognition Error', errorMessage);
+      };
+
+      Voice.onSpeechPartialResults = (e: any) => {
+        console.log('🔄 Partial results:', e.value);
+        // Optional: show partial results as user speaks
       };
 
       // Cleanup
       return () => {
-        Voice.destroy().then(Voice.removeAllListeners);
+        if (Voice) {
+          Voice.destroy()
+            .then(() => {
+              console.log('Voice destroyed');
+              Voice.removeAllListeners();
+            })
+            .catch(e => console.log('Error destroying voice:', e));
+        }
       };
     }
   }, []);
 
+  // Get unique categories from real medicines
+  const categories = ['All', ...Array.from(new Set(medicines.map(m => m.category).filter(Boolean)))];
+
   // Filter medicines based on search query and category
-  const filteredMedicines = MEDICINES.filter((medicine) => {
-    const matchesSearch = medicine.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      medicine.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      medicine.category.toLowerCase().includes(searchQuery.toLowerCase());
+  const filteredMedicines = medicines.filter((medicine) => {
+    const name = getMedicineName(medicine).toLowerCase();
+    const searchLower = searchQuery.toLowerCase();
+    
+    const matchesSearch = name.includes(searchLower) ||
+      medicine.genericName?.toLowerCase().includes(searchLower) ||
+      medicine.brandName?.toLowerCase().includes(searchLower) ||
+      medicine.category?.toLowerCase().includes(searchLower) ||
+      medicine.manufacturer?.toLowerCase().includes(searchLower);
     
     const matchesCategory = selectedCategory === 'All' || medicine.category === selectedCategory;
     
-    return matchesSearch && matchesCategory;
+    return matchesSearch && matchesCategory && medicine.isActive;
   });
 
   const handleVoiceSearch = async () => {
+    console.log('🎤 Voice search button pressed');
+    
     if (!Voice) {
       Alert.alert(
         'Voice Search Not Available',
-        'Voice search requires the @react-native-voice/voice package.\n\nTo enable:\n1. Restart the app\n2. If still not working, run: npm install @react-native-voice/voice',
+        'Voice search is not available in this build.\n\nNote: Voice search works on:\n• Physical Android devices\n• Physical iOS devices\n\nNot supported on:\n• Emulators\n• Web browser (Expo Go)',
         [{ text: 'OK' }]
       );
       return;
@@ -227,31 +338,47 @@ export default function SearchScreen() {
     try {
       if (isVoiceSearching) {
         // Stop listening
+        console.log('Stopping voice recognition...');
         await Voice.stop();
         setIsVoiceSearching(false);
       } else {
-        // Start listening
-        const isAvailable = await Voice.isAvailable();
-        if (!isAvailable) {
+        // Check if voice recognition is available
+        console.log('Checking voice availability...');
+        const available = await Voice.isAvailable();
+        console.log('Voice available:', available);
+        
+        if (!available) {
           Alert.alert(
             'Voice Not Available',
-            'Voice recognition is not available on this device. Please use the keyboard to search.',
+            'Voice recognition is not available on this device.\n\nPlease ensure:\n• You are using a physical device\n• Microphone permissions are granted',
             [{ text: 'OK' }]
           );
           return;
         }
         
-        await Voice.start('en-US'); // Start listening in English
-        // Will automatically set isVoiceSearching to true via onSpeechStart callback
+        // Start listening
+        console.log('Starting voice recognition...');
+        await Voice.start('en-US');
+        console.log('Voice recognition started');
+        
+        // Show instructions
+        Alert.alert(
+          'Listening...',
+          'Speak now to search for medicines.\nTap the microphone again to stop.',
+          [{ text: 'OK' }]
+        );
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Voice search error:', error);
       setIsVoiceSearching(false);
-      Alert.alert(
-        'Voice Search Error',
-        'Could not start voice recognition. Please check microphone permissions and try again.',
-        [{ text: 'OK' }]
-      );
+      
+      let errorMessage = 'Could not start voice recognition.';
+      if (error.message) {
+        errorMessage += `\n\nError: ${error.message}`;
+      }
+      errorMessage += '\n\nPlease check:\n• Microphone permissions\n• Device compatibility\n• You are not using an emulator';
+      
+      Alert.alert('Voice Search Error', errorMessage, [{ text: 'OK' }]);
     }
   };
 
@@ -302,10 +429,20 @@ export default function SearchScreen() {
         </View>
       </View>
 
+      {/* Refresh Button */}
+      {!loading && (
+        <TouchableOpacity
+          onPress={fetchMedicines}
+          className="absolute top-4 right-4 bg-teal-600 rounded-full w-10 h-10 items-center justify-center z-10"
+        >
+          <Ionicons name="refresh" size={20} color="white" />
+        </TouchableOpacity>
+      )}
+
       {/* Categories */}
       <View className="px-4 mb-2">
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {CATEGORIES.map((category) => (
+          {categories.map((category) => (
             <TouchableOpacity
               key={category}
               onPress={() => setSelectedCategory(category)}
@@ -336,7 +473,24 @@ export default function SearchScreen() {
 
       {/* Medicine List */}
       <ScrollView className="flex-1 px-4">
-        {filteredMedicines.length === 0 ? (
+        {loading ? (
+          <View className="items-center justify-center py-20">
+            <ActivityIndicator size="large" color="#41A67E" />
+            <Text className="text-gray-600 mt-3">Loading medicines...</Text>
+          </View>
+        ) : error ? (
+          <View className="items-center justify-center py-20">
+            <Ionicons name="alert-circle-outline" size={64} color="#EF4444" />
+            <Text className="text-red-600 mt-3 text-lg">Error</Text>
+            <Text className="text-gray-600 text-sm text-center px-6">{error}</Text>
+            <TouchableOpacity
+              onPress={fetchMedicines}
+              className="mt-4 bg-teal-600 px-6 py-3 rounded-lg"
+            >
+              <Text className="text-white font-semibold">Try Again</Text>
+            </TouchableOpacity>
+          </View>
+        ) : filteredMedicines.length === 0 ? (
           <View className="flex-1 items-center justify-center py-20">
             <Text className="text-6xl mb-4">🔍</Text>
             <Text className="text-gray-800 font-semibold text-lg">No medicines found</Text>
@@ -344,11 +498,11 @@ export default function SearchScreen() {
           </View>
         ) : (
           filteredMedicines.map((medicine) => (
-            <View key={medicine.id} className="bg-white rounded-xl p-4 mb-3 shadow-sm">
+            <View key={medicine._id} className="bg-white rounded-xl p-4 mb-3 shadow-sm">
               <View className="flex-row">
                 {/* Medicine Icon */}
                 <View className="w-16 h-16 bg-teal-50 rounded-lg items-center justify-center mr-3">
-                  <Text className="text-3xl">{medicine.image}</Text>
+                  <Ionicons name="medical" size={32} color="#41A67E" />
                 </View>
 
                 {/* Medicine Details */}
@@ -356,7 +510,7 @@ export default function SearchScreen() {
                   <View className="flex-row items-start justify-between">
                     <View className="flex-1">
                       <Text className="text-gray-800 font-bold text-base">
-                        {medicine.name}
+                        {getMedicineName(medicine)}
                       </Text>
                       <Text className="text-gray-500 text-xs mt-1">
                         {medicine.manufacturer}
@@ -373,47 +527,48 @@ export default function SearchScreen() {
                     <View className="bg-blue-100 px-2 py-1 rounded mr-2">
                       <Text className="text-blue-700 text-xs">{medicine.category}</Text>
                     </View>
-                    {medicine.inStock && (
-                      <View className="flex-row items-center">
-                        <AntDesign name="checkcircle" size={12} color="#10B981" />
-                        <Text className="text-green-600 text-xs ml-1">In Stock</Text>
+                    {medicine.stockQty > 0 ? (
+                      <View className="bg-emerald-100 px-2 py-1 rounded">
+                        <Text className="text-emerald-700 text-xs">{medicine.stockQty} in stock</Text>
+                      </View>
+                    ) : (
+                      <View className="bg-red-100 px-2 py-1 rounded">
+                        <Text className="text-red-700 text-xs">Out of Stock</Text>
                       </View>
                     )}
                   </View>
 
-                  <Text className="text-gray-600 text-sm mt-2">
-                    {medicine.description}
+                  <Text className="text-gray-600 text-xs mt-2" numberOfLines={2}>
+                    {medicine.dosage} {medicine.doseForm}
+                    {medicine.pharmacyId && ` • ${medicine.pharmacyId.pharmacyName}`}
                   </Text>
 
                   <View className="flex-row items-center justify-between mt-3">
                     <Text className="text-teal-600 font-bold text-lg">
-                      Rs. {medicine.price}
+                      LKR {medicine.price.toFixed(2)}
                     </Text>
                     <TouchableOpacity
-                      onPress={() => handleAddToCart(medicine.id)}
-                      className={`flex-row items-center px-4 py-2 rounded-lg ${
-                        cart.includes(medicine.id) ? 'bg-gray-200' : 'bg-teal-600'
+                      onPress={() => addToCart(medicine._id)}
+                      disabled={medicine.stockQty < 1 || cart.includes(medicine._id)}
+                      className={`px-3 py-2 rounded-lg ${
+                        cart.includes(medicine._id) || medicine.stockQty < 1 ? 'bg-gray-200' : 'bg-teal-600'
                       }`}
-                      disabled={cart.includes(medicine.id)}
                     >
-                      <AntDesign 
-                        name={cart.includes(medicine.id) ? "check" : "shoppingcart"} 
-                        size={16} 
-                        color={cart.includes(medicine.id) ? '#6B7280' : 'white'} 
-                      />
-                      <Text className={`ml-2 font-semibold ${
-                        cart.includes(medicine.id) ? 'text-gray-600' : 'text-white'
-                      }`}>
-                        {cart.includes(medicine.id) ? 'Added' : 'Add to Cart'}
-                      </Text>
-                    </TouchableOpacity>
+                        <Text
+                          className={`text-xs font-semibold ${
+                            cart.includes(medicine._id) || medicine.stockQty < 1 ? 'text-gray-600' : 'text-white'
+                          }`}
+                        >
+                          {cart.includes(medicine._id) ? 'Added ✓' : '+ Cart'}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 </View>
               </View>
-            </View>
-          ))
-        )}
-      </ScrollView>
+            ))
+          )}
+        </ScrollView>
 
       {/* Cart Badge */}
       {cart.length > 0 && (

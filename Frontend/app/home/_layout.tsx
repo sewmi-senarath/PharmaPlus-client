@@ -82,6 +82,14 @@ export default function HomeLayout() {
           href: null,
         }}
       />
+
+      {/* Hide order-medicine from tabs */}
+      <Tabs.Screen
+        name="order-medicine"
+        options={{
+          href: null,
+        }}
+      />
     </Tabs>
   );
 }
